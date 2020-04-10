@@ -1,24 +1,46 @@
+/*
+ * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * * Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package arcep.ftth2;
 
 import java.io.*;
 import java.util.*;
-
-import com.vividsolutions.jts.geom.*;
-
-import org.geotools.data.*;
-import org.geotools.data.simple.*;
-import org.geotools.data.shapefile.ShapefileDataStoreFactory;
-import org.geotools.data.shapefile.ShapefileDataStore;
-import org.geotools.feature.*;
-import org.geotools.feature.simple.*;
-
-import org.opengis.feature.simple.*;
 import javax.swing.*;
+import com.vividsolutions.jts.geom.*;
+import org.geotools.factory.Hints;
+import org.geotools.feature.simple.SimpleFeatureBuilder;
+import org.geotools.geometry.jts.JTSFactoryFinder;
+import org.opengis.feature.simple.SimpleFeature;
+import org.opengis.feature.simple.SimpleFeatureType;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
-public class Deploiement implements Runnable{// {
+public class Deploiement implements Runnable{
 
     FenProgression fen;
     
+    final List<String> listeDpts;
     private int nbDptTraites;
     final Parametres parametres;
     final CoutsUnitaires coutsUnitaires;
@@ -26,14 +48,17 @@ public class Deploiement implements Runnable{// {
     final String racineResultats;
     final String dossierNRO;
     final String dossierBLO;
+    final String fichierImmeubles;
             
-    public Deploiement(Parametres parametres, CoutsUnitaires couts, String cheminReseau, String cheminResultats, String dossierNRO, String dossierBLO) {
+    public Deploiement(Parametres parametres, CoutsUnitaires couts, List<String> listeDpts, String cheminReseau, String cheminResultats, String dossierNRO, String dossierBLO, String fichierImmeubles) {
         this.parametres = parametres;
         this.coutsUnitaires = couts;
-        this.cheminReseau = parametres.cheminReseau;
+        this.listeDpts = listeDpts;
+        this.cheminReseau = Main.cheminReseau;
         this.racineResultats = parametres.racineResultats;
-        this.dossierNRO = dossierNRO;
+        this.dossierNRO = dossierNRO.replace("-old","");
         this.dossierBLO = dossierBLO;
+        this.fichierImmeubles = fichierImmeubles;
     }
     
    @Override
@@ -55,7 +80,7 @@ public class Deploiement implements Runnable{// {
         
         try {
             
-            fen.initBarre(parametres.getListeDpts().size());
+            fen.initBarre(listeDpts.size());
             nbDptTraites = 0;
             
             ////////////////////////////////////////////////////////
@@ -71,27 +96,26 @@ public class Deploiement implements Runnable{// {
             csvUONatDetail.println("Departement;Zone;"+UO.header(parametres, true, true,2));
             
             PrintWriter csvUONatCouts = new PrintWriter(dir+"/UONatCouts_"+parametres.terminaison+".csv");
-           csvUONatCouts.println("Zone;"+UO.header(parametres, true, true,1));
+            csvUONatCouts.println("Zone;"+UO.header(parametres, true, true,1));
            
-           PrintWriter csvUONatparNRO = new PrintWriter(dir+"/UONatparNRO_"+parametres.terminaison+".csv");
-           csvUONatparNRO.println("Departement;Zone;NRO;"+UO.header(parametres, true, true,1));
+            PrintWriter csvUONatparNRO = new PrintWriter(dir+"/UONatparNRO_"+parametres.terminaison+".csv");
+            csvUONatparNRO.println("Departement;Zone;NRO;"+UO.header(parametres, true, true,1));
             
             PrintWriter csvCoutsNat = new PrintWriter(dir+"/CoutsNat_"+parametres.terminaison+".csv");
             csvCoutsNat.println("Departement;Zone;"+Couts.header());
             
             PrintWriter csvAnalyseGC = new PrintWriter(dir+"/AnalyseGC_"+parametres.terminaison+".csv");
-            csvAnalyseGC.println("Departement;Zone;Aerien Orange;Aerien Enedis;Façade;Immeuble;Pleine terre;Caniveau;Galerie;Conduite allegee;Egout;Conduite enrobee;Conduite mixte;Routier;Creation modele");
-            
+            csvAnalyseGC.println("Departement;Zone;Aerien existant;PT reconstruit aerien;Souterrain existant;PT reconstruit souterrain;Immeubles");            
             PrintWriter csvAnalyseNROPM = new PrintWriter(dir+"/AnalyseNROPM_"+parametres.terminaison+".csv");
             csvAnalyseNROPM.print("Departement;Zone;NRO;IdPM;Type;Distance NRO-PM;Lignes");
             for (int i = parametres.getCalibreMin();i<=parametres.getCalibreMax(7);i++){
                 csvAnalyseNROPM.print(";Nb cables_"+parametres.calibre[i]+" entrants");
             }
-            csvAnalyseNROPM.println(";Nb fibres entrantes;Longueur moyenne;Premier decile;Mediane;Dernier decile");
+            csvAnalyseNROPM.println(";Nb fibres entrantes;Longueur moyenne PM-PBO;Premier decile;Mediane;Dernier decile");
             
             PrintWriter csvAnalyseDemande = new PrintWriter(dir+"/AnalyseDemande_"+parametres.terminaison+".csv");
             csvAnalyseDemande.println("Departement;ZTD;AMII;RIP");
-            for (String dpt : parametres.getListeDpts()) {
+            for (String dpt : listeDpts) {
                 csvAnalyseDemande.print(dpt);
                 Map<String, Integer> demandeCible = parametres.getDemande(dpt);
                 String[] zones = {"ZTD","ZMD_AMII","ZMD_RIP"};
@@ -114,9 +138,9 @@ public class Deploiement implements Runnable{// {
             ////////////////////////////////////////////////////////
             
             
-            for (String dpt : parametres.getListeDpts()) {
+            for (String dpt : listeDpts) {
                 
-                fen.afficher("Démarrage -  " + parametres.getNomDepartement(dpt));
+                fen.afficher("Démarrage -  " + Main.getNomDepartement(dpt));
 
                 String ligne;
                 String[] donneesLigne;
@@ -130,12 +154,12 @@ public class Deploiement implements Runnable{// {
                 dir.mkdirs();
                  
                 fen.afficher("Lecture du fichier immeubles");
-                ///////////////////////////////////////////////
-                //Lecture des immeubles du département (pour les coûts de colonne montante)
-                //////////////////////////////////////////////////////////////
+                ///////////////////////////////////////////////////////////////////////////
+                /// Lecture des immeubles du département (pour les coûts de colonne montante)
+                ///////////////////////////////////////////////////////////////////////////
                 
                 HashMap<String, int[]> listeImmeubles = new HashMap<>();
-                BufferedReader ficImmeubles = new BufferedReader(new FileReader(cheminReseau + "immeubles.csv"));
+                BufferedReader ficImmeubles = new BufferedReader(new FileReader(fichierImmeubles));
                 ficImmeubles.readLine(); // on passe la ligne d'en-tête
                 while ((ligne = ficImmeubles.readLine()) != null) {
                     donneesLigne = ligne.split(";");
@@ -156,63 +180,30 @@ public class Deploiement implements Runnable{// {
 
                 fen.afficher("Initialisation des fichiers de sortie");
                 
-                ////////////////////////////////////////////////////////
+                //////////////////////////////////////////////////////////
                 /// INITIALISATION  DES FICHIERS DE SORTIE PAR DEPARTEMENT
-                ////////////////////////////////////////////////////////
+                //////////////////////////////////////////////////////////
+                                
                 
+                /// A. Shapefiles
                 
-                SimpleFeatureTypeBuilder builderLineaires = new SimpleFeatureTypeBuilder();
-                SimpleFeatureTypeBuilder builderPM = new SimpleFeatureTypeBuilder();
+                CoordinateReferenceSystem crs = Main.getCRS(dpt, true);
+                GeometryFactory gf = JTSFactoryFinder.getGeometryFactory(new Hints(Hints.JTS_SRID, Integer.parseInt(crs.getIdentifiers().iterator().next().getCode())));
                 
-                builderLineaires.setName("Lineaires");
-                builderPM.setName("PointsMutualisation");
+                SimpleFeatureType typeShpNRO = BLO.getNROFeatureType(crs);
+                SimpleFeatureBuilder featureBuilderNRO = new SimpleFeatureBuilder(typeShpNRO);
+                List<SimpleFeature> featuresNRO = new ArrayList<>();
                 
-                switch(dpt){
-                    case "971":
-                    case "972":
-                        builderLineaires.setSRS("EPSG:32620"); //UTM 20N
-                        builderPM.setSRS("EPSG:32620");
-                        break;
-                    case "973":
-                        builderLineaires.setSRS("EPSG:32622"); //UTM 22N
-                        builderPM.setSRS("EPSG:32622");
-                        break;
-                    case "974":
-                        builderLineaires.setSRS("EPSG:32740"); //UTM 40S
-                        builderPM.setSRS("EPSG:32740");
-                        break;
-                    default:
-                        builderLineaires.setSRS("EPSG:27572"); //Lambert 2 Etendu
-                        builderPM.setSRS("EPSG:27572");
-                }
+                SimpleFeatureType typeShpPM = ZAPM.getPMFeatureType(crs);
+                SimpleFeatureBuilder featureBuilderPM = new SimpleFeatureBuilder(typeShpPM);
+                List<SimpleFeature> featuresPM = new ArrayList<>();
+                
+                SimpleFeatureType typeShpAretes = AreteBLOM.getAreteFeatureType(crs);
+                SimpleFeatureBuilder featureBuilderAretes = new SimpleFeatureBuilder(typeShpAretes);
+                List<SimpleFeature> featuresAretes = new ArrayList<>();
 
-                builderLineaires.add("Arete", LineString.class);
-                builderLineaires.add("ID", Long.class);
-                builderLineaires.add("ModePose", Integer.class);
-                builderLineaires.length(8).add("NRO", String.class);
-                //builderLineaires.length(8).add("Zone", String.class);
-                //builderLineaires.add("CodePM", String.class);
-                //builderLineaires.add("Transport", Integer.class);
-                //builderLineaires.add("Distri", Integer.class);
-                builderLineaires.add("NbLignes", Long.class);
-
-                builderPM.add("Point", Point.class);
-                builderPM.length(30).add("ID", String.class);
-                builderPM.length(20).add("Type", String.class);
-                builderPM.add("NbLignes", Long.class);
+                /// B. Fichiers csv
                 
-                SimpleFeatureType formatShpLineaires = builderLineaires.buildFeatureType();
-                SimpleFeatureType formatShpPM = builderPM.buildFeatureType();
-
-                SimpleFeatureCollection collectionLineaires = FeatureCollections.newCollection();
-                SimpleFeatureCollection collectionPM = FeatureCollections.newCollection();
-                
-                SimpleFeatureBuilder featureBuilderLineaires = new SimpleFeatureBuilder(formatShpLineaires);
-                SimpleFeatureBuilder featureBuilderPM = new SimpleFeatureBuilder(formatShpPM);
-                
-                GeometryFactory gf = new GeometryFactory(new PrecisionModel(), 27572);
-
-                // initialisation des fichiers de sortie UO et coûts
                 PrintWriter UOparPM = null; // fichier des UO par PM (GC, câbles, boîtiers)
                 if (parametres.ficUnitesOeuvre) {
                     UOparPM = new PrintWriter(new FileWriter(cheminResultats + "/UnitesOeuvreParPM_"+ dptResultats +".csv"));
@@ -272,12 +263,12 @@ public class Deploiement implements Runnable{// {
                     csvAnalysePCIsoles30pc.println("Dpt;NRO;PC");
                 }       
 
-                int[] analyseGC = new int[13];
+                int[] analyseGC = new int[5];
                 
                 int nbNRO = 0;
-                File d = new File(cheminReseau + dossierBLO+"/"+dossierBLO+"_"+dpt);
+                File d = new File(cheminReseau + dossierBLO+"/"+dossierBLO.replace("-old","")+"_"+dpt);
                 for (File f : d.listFiles()){
-                    if (parametres.zones.contains(f.getName().replace(dossierBLO+"_"+dpt+"_", "")))
+                    if (parametres.zones.contains(f.getName().replace(dossierBLO.replace("-old","")+"_"+dpt+"_", "")))
                         nbNRO+=(f.listFiles().length/3);
                 }
                 
@@ -305,8 +296,7 @@ public class Deploiement implements Runnable{// {
                             donneesLigne = ligne.split(";");
                             String nro, nra;
                             nra = donneesLigne[1];
-                            if (parametres.NROauxNRA) nro = nra;
-                            else nro = donneesLigne[0];
+                            nro = donneesLigne[0];
                             if (!NRONRA.containsKey(nro)) NRONRA.put(nro, new ArrayList<String>());
                             NRONRA.get(nro).add(nra);
                         }
@@ -315,7 +305,7 @@ public class Deploiement implements Runnable{// {
                         
                         
                         Couts couts = new Couts(); 
-                        String dossier = cheminReseau+dossierBLO+"/"+dossierBLO+"_"+dpt+"/"+dossierBLO+"_"+dpt+"_"+zone;
+                        String dossier = cheminReseau+dossierBLO+"/"+dossierBLO.replace("-old","")+"_"+dpt+"/"+dossierBLO.replace("-old","")+"_"+dpt+"_"+zone;
                  
                         ////////////////////////////////////////////////////////
                         /// AJUSTEMENT DE LA DEMANDE CONSTRUITE A LA DEMANDE CIBLE
@@ -343,7 +333,6 @@ public class Deploiement implements Runnable{// {
                             newDemande += n.demandeLocaleTotale();
                         }
                         System.out.println("Nouvelle demande en "+zone+" : "+newDemande);
-                        
 
                         ////////////////////////////////////////////////////////
                         /// BOUCLE SUR LES NRO 
@@ -354,20 +343,21 @@ public class Deploiement implements Runnable{// {
                             
                             BLO blo = new BLO(codeNRO, Reseau.readCentre(dossier, codeNRO), noeudsNRO.get(codeNRO), Reseau.readAretes(dossier,codeNRO), zone, parametres);
                             blo.simplification(); // on fusionne les arêtes qui peuvent l'être
-                            blo.posePMext();
-                            blo.listingPMint();
-                            blo.calculDemande(); // (on répartit entre mutu et non mutu, essentiellement)
-                            if (coloriage) blo.setModesPose(dossier);
+                            blo.posePM();
+                            blo.setModesPose(coloriage, dossier);
                             blo.calculerUOAretes(); // arête par arête
                             blo.calculResultatsParPM(); // là on agrège en parcourant l'arbre encore une fois
                             
-                            if (parametres.ficLineaires) blo.addTreeToShape(gf, collectionLineaires, featureBuilderLineaires);
+                            if (parametres.ficLineaires) featuresAretes.addAll(blo.getAretes(gf, featureBuilderAretes));
+                            if (parametres.ficPBO) blo.printShapePBO(cheminResultats, crs, gf);
                             
                             int[] immeubles = immeubles(NRONRA.get(codeNRO), listeImmeubles);
                             UO uoNRO = blo.computeAndGetUo(immeubles);
                             csvUONatparNRO.println(dpt+";"+zone+";"+codeNRO+";"+uoNRO.print(parametres, 1));
                             uo.addUO(uoNRO);
-                                                
+                            
+                            if (parametres.ficNRO) featuresNRO.add(blo.getFeatureNRO(gf ,featureBuilderNRO));
+
                             blo.clearArbre(); // attention ici on suppose qu'on n'a plus besoin de l'arbre contenu dans blo et on fait blo.root = null
                             
                             ////////////////////////////////////////////////////////
@@ -391,19 +381,19 @@ public class Deploiement implements Runnable{// {
                                     csvDistributionL.println(s);
                                 }
                             }
+                            
                             if (parametres.ficPM){
-                                blo.shapefilePM(gf, collectionPM, featureBuilderPM);
+                                featuresPM.addAll(blo.getFeaturesPM(gf, featureBuilderPM));
                             }
 
                             for(String s : blo.getNROPM(dpt)){
                                 csvAnalyseNROPM.println(s);
                             }
 
-                            int[] gc = blo.getAnalyseGC();
+                            int[] gc = blo.getPBO();
                             for (int i = 0;i<analyseGC.length;i++){
                                 analyseGC[i] += gc[i];
                             }
-                            
                             
                             System.out.println("Fin du NRO n°" + codeNRO);
                             fen.finNRA();
@@ -458,74 +448,25 @@ public class Deploiement implements Runnable{// {
                 }
                 
                 //Creation des ShapeFiles
+                if (parametres.ficNRO)
+                    Shapefiles.printShapefile(cheminResultats+"/NRO_"+dpt, typeShpNRO, featuresNRO);
                 
-                if (parametres.ficPM) {
-                    File shpLineaires = null;
-                    shpLineaires = new File(cheminResultats + "/PM_" + dpt + ".shp");
-                    
-                    ShapefileDataStoreFactory dataStoreFactory = new ShapefileDataStoreFactory();
-                    ShapefileDataStore dataStorePM = (ShapefileDataStore) dataStoreFactory.createDataStore(shpLineaires.toURI().toURL());
-
-                    dataStorePM.createSchema(formatShpPM);
-
-                    Transaction transaction = new DefaultTransaction("create");
-
-                    String typeName = dataStorePM.getTypeNames()[0];
-                    SimpleFeatureSource featureSourceLineaire = dataStorePM.getFeatureSource(typeName);
-
-                    if (featureSourceLineaire instanceof SimpleFeatureStore) {
-                        SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSourceLineaire;
-
-                        featureStore.setTransaction(transaction);
-
-                        featureStore.addFeatures(collectionPM);
-                        transaction.commit();
-                        transaction.close();
-                        
-                    } else {
-                        System.out.println("Le Shapefile n'est pas accessible en écriture");
-                    }
-                }
+                if (parametres.ficPM)
+                    Shapefiles.printShapefile(cheminResultats + "/PM_" + dpt, typeShpPM, featuresPM);
                 
-                if (parametres.ficLineaires) {
-                    File shpLineaires = new File(cheminResultats + "/Lineaires_" + dpt + ".shp");
+                if (parametres.ficLineaires)
+                    Shapefiles.printShapefile(cheminResultats + "/Aretes_" + dpt, typeShpAretes, featuresAretes);
 
-                    ShapefileDataStoreFactory dataStoreFactory = new ShapefileDataStoreFactory();
-                    ShapefileDataStore dataStoreLineaires = (ShapefileDataStore) dataStoreFactory.createDataStore(shpLineaires.toURI().toURL());
-
-                    dataStoreLineaires.createSchema(formatShpLineaires);
-
-                    Transaction transaction = new DefaultTransaction("create");
-
-                    String typeName = dataStoreLineaires.getTypeNames()[0];
-                    SimpleFeatureSource featureSourceLineaire = dataStoreLineaires.getFeatureSource(typeName);
-                    
-                    if (featureSourceLineaire instanceof SimpleFeatureStore) {
-                        System.out.println("Début de l'impression du fichier des linéaires");
-                        SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSourceLineaire;
-
-                        featureStore.setTransaction(transaction);
-
-                        featureStore.addFeatures(collectionLineaires);
-                        transaction.commit();
-                        transaction.close();
-                    } else {
-                        System.out.println("Le Shapefile n'est pas accessible en écriture");
-                    }
-                }
-                
                 fen.finTraitementDpt();
                 nbDptTraites++;     
                 System.out.println("Fin pour le département "+dpt);
             }
-            
             
             for (String zone : parametres.zones){
                 csvUONatCouts.println(zone+";"+uoZones.get(zone).print(parametres, 1));
             }
             
             csvUONatCouts.close();
-            
             csvUONatDetail.close();
             csvUONatparNRO.close();
             csvCoutsNat.close();
@@ -540,12 +481,11 @@ public class Deploiement implements Runnable{// {
             e.printStackTrace();
         }
     }
-    
+
     public int getAvancement() {
-        List<String> dpts = parametres.getListeDpts();
-        if (dpts.isEmpty())
+        if (listeDpts.isEmpty())
             return 0;
-        else return Math.round(100*nbDptTraites/dpts.size());
+        else return Math.round(100*nbDptTraites/listeDpts.size());
     }
     
     private void adapteDemande(List<Noeud> noeudsDemande, int demandeConstruite, int demandeVoulue, String zone, int seuilPMint){

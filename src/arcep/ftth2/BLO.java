@@ -1,19 +1,47 @@
-
+/*
+ * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * * Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package arcep.ftth2;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.Point;
 import java.io.*;
 import java.util.*;
-import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
+import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
+import org.opengis.feature.simple.SimpleFeature;
+import org.opengis.feature.simple.SimpleFeatureType;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
 public class BLO {
     
     private final String codeNRO;
     private AreteBLOM root; // arête virtuelle racine de l'arbre représentant le réseau
     private final String zoneMacro; // ZTD ou ZMD_AMII ou ZMD_RIP
-    private final Set<String> zones; // ZTD_HD, ZTD_BD ou ZMD
+    private final Set<String> zones; // {ZTD_HD, ZTD_BD} ou {ZMD}
     private int nbLignes;
     private final Parametres parametres;
     
@@ -22,7 +50,7 @@ public class BLO {
     private Map<String,UO> transports;
     private UO uo;
     private Couts c;
-    
+
     public BLO(String codeNRO, int centre, Map<Integer,Noeud> noeuds, Map<Long,Arete> aretes,  String zone, Parametres parametres) {
         System.out.println("Zone : "+zone);
         System.out.println("Nombre de noeuds : "+ noeuds.size());
@@ -39,9 +67,11 @@ public class BLO {
         else zones.add("ZMD");
         
         this.parametres = parametres;
+
         root = new AreteBLOM(noeuds.get(centre));
-        buildTree(noeuds,aretes);
-        System.out.println("Le NRO "+codeNRO+" correspond au noeud réseau : " + root.n.id);
+        this.buildTree(noeuds,aretes);
+        System.out.println("Test root 2 - Le NRO "+codeNRO+" correspond au noeud réseau : " + root.n.id);
+        System.out.println("Test root 2 - Ses coordonnées sont : X : "+root.n.coord[0]+" - Y : "+root.n.coord[1]);
     }
     
     private void buildTree(Map<Integer,Noeud> noeuds, Map<Long,Arete> aretes){
@@ -59,7 +89,7 @@ public class BLO {
                         for (AreteBLOM fille : mere.getFilles()){
                             if (fille.id == id){
                                 ajout = false;
-                                fille.addNoeudLocal(noeud);
+                                fille.addNoeudLocal(noeud, zones);
                                 //System.out.println("L'arête "+fille.id+" a "+fille.lignesAval(zone)+" lignes.");
                                 mere = fille;
                                 break;
@@ -74,9 +104,9 @@ public class BLO {
                             //System.out.println("Id du noeud aval : "+n.id);
                             try{
                                 AreteBLOM fille = new AreteBLOM(a, n, mere.n);
-                                fille.addNoeudLocal(n);
+                                fille.addNoeudLocal(n, zones);
                                 //System.out.println("L'arête "+fille.id+" a "+fille.lignesAval(zone)+" lignes.");
-                                mere.add(fille);
+                                mere.addFille(fille);
                                 mere = fille;
                             } catch (Exception e){
                                 e.printStackTrace();
@@ -89,86 +119,105 @@ public class BLO {
         root.calculDemandeRoot();
     }
     
-    public void addTreeToShape(GeometryFactory gf, SimpleFeatureCollection collection,SimpleFeatureBuilder featureBuilderLineaires){
-        for (String zone : zones){
-            root.addTreeToShape(codeNRO, zone, gf, collection, featureBuilderLineaires);
-        }
-    }
-    
     public void simplification(){
         //Construction de l'arbre orienté simplifié
-        AreteBLOM newRoot = new AreteBLOM(root, 0);
+        AreteBLOM newRoot = new AreteBLOM(root, 0, new ArrayList<>());
         System.out.println("Demande locale au NRO : "+newRoot.n.demandeLocaleTotale());
         for (AreteBLOM ar : root.getFilles()){
-            ar.fusionAretes(newRoot,0);
+            ar.fusionAretes(newRoot,0, new ArrayList<>());
         }
         this.root = newRoot;
         nbLignes = this.root.totalLignes();
         System.out.println("Nb de lignes au NRO : "+nbLignes);
     }
-    
-    public void posePMext(){
+
+    public void posePM(){
+        
+        // placement des PM extérieurs
         for (String zone : zones){
-            int nbPM = root.posePMExt(zone, parametres.maxMedianeDistPMPBO, parametres.seuilPM(zone));
-            System.out.println("Nombre de PM en zone "+zone+" : "+nbPM);
+            int nbPM;
+            if (parametres.utiliseMediane) nbPM = root.posePMExtMediane(zone, parametres.maxDistPMPBO, parametres.seuilPM(zone));
+            else nbPM = root.posePMExtMoyenne(zone, parametres.maxDistPMPBO, parametres.seuilPM(zone));
+            System.out.println("Nombre de PM ext en zone "+zone+" : "+nbPM);
         }
-    }
-    
-    public void listingPMint(){
+        
+        // listing des PM intérieurs (et calcul de la distance au NRO pour tous les noeuds)
         listePMint = new  ArrayList<>();
-        root.listingPMint(listePMint, 0);
-    }
-    
-    public void calculDemande(){
-        root.calculDemande(zones, parametres); // fonction récursive
-    }
-    
-    public void setModesPose(String dossier){
-        
-        double[] pourcentages = this.getPourcentagesGC(codeNRO, dossier, "ModesPose");
-        double pourcentageAerien = pourcentages[0]+pourcentages[1]+pourcentages[2];
-        double pourcentagePT = pourcentages[3];
-        
-        int niveauRoot = root.calculNiveau();
-        double longueurTotale = root.longueurTotale();
-        
-        double seuilAerien = longueurTotale*pourcentageAerien;
-        double longueurPT = longueurTotale*pourcentagePT;
-        double seuilPleineTerreAerien = seuilAerien + longueurPT*parametres.partReconstrPTAerien;
-        double seuilPleineTerreSouterrain = seuilAerien + longueurPT;
-        
-        int niveau = 1;
-        double longueurParcourue = 0.0;
-        while (niveau < niveauRoot){
-            longueurParcourue = root.setModesPose(niveau, seuilAerien, seuilPleineTerreAerien, seuilPleineTerreSouterrain, longueurParcourue);
-            niveau++;
+        if (zoneMacro.equals("ZTD")){
+            root.listingPMint(listePMint, 0);
+            System.out.println("Nombre de PM int : "+listePMint.size());
         }
-        
-        System.out.println("Longueur totale : "+longueurTotale);
-        System.out.println("LongueurP finale : "+longueurParcourue);
-        System.out.println("Niveau de la racine : "+niveauRoot);
+        // numérotation globale des PM dépendant du NRO
+        int prochainNumero = 1;
+        for(String zone: zones){
+            prochainNumero = root.numerotePM(zone, prochainNumero);
+        }
+        for (Noeud n : this.listePMint){
+            n.numPM = prochainNumero;
+            prochainNumero++;
+        }
     }
     
+    public void setModesPose(boolean coloriage, String dossier){
+        
+        if (coloriage){
+            double[] pourcentages = this.getPourcentagesGC(codeNRO, dossier, "ModesPose");
+            double pourcentageAerien = pourcentages[0]+pourcentages[1]+pourcentages[2];
+            double pourcentagePT = pourcentages[4];
+
+            int niveauRoot = root.calculNiveau();
+            double longueurTotale = root.longueurTotale();
+
+            double seuilAerien = longueurTotale*pourcentageAerien;
+            double longueurPT = longueurTotale*pourcentagePT;
+            double seuilPleineTerreAerien = seuilAerien + longueurPT*parametres.partReconstrPTAerien;
+            double seuilPleineTerreSouterrain = seuilAerien + longueurPT;
+
+            int niveau = 1;
+            double longueurParcourue = 0.0;
+            while (niveau < niveauRoot){
+                longueurParcourue = root.setModesPose(niveau, seuilAerien, seuilPleineTerreAerien, seuilPleineTerreSouterrain, longueurParcourue);
+                niveau++;
+            }
+
+            System.out.println("Longueur totale : "+longueurTotale);
+            System.out.println("LongueurP finale : "+longueurParcourue);
+            System.out.println("Niveau de la racine : "+niveauRoot);
+        } else{
+            root.setModesPose();
+        }
+    }
+
     public void calculerUOAretes(){
         for (AreteBLOM a : root.getFilles()){
             a.calculUO(zones, parametres); // fonction récursive
         }
     }
     
+    public List<SimpleFeature> getAretes(GeometryFactory gf, SimpleFeatureBuilder featureBuilderLineaires){
+        List<SimpleFeature> aretes = new ArrayList<>();
+        for (AreteBLOM a : root.getFilles()){
+            aretes.addAll(a.getFeatures(codeNRO+"_"+zoneMacro.replace("ZMD_", ""), zoneMacro.replace("ZMD_", ""), zones, parametres.calibre, gf, featureBuilderLineaires));
+        }
+        return aretes;
+    }
+
     public void calculResultatsParPM(){
-        ResParPM = new HashMap<>();
-        transports = new HashMap<>();
+        this.ResParPM = new HashMap<>();
+        this.transports = new HashMap<>();
         for (String zone : zones){
             // distribution
-            List<ZAPM> res;// = new ArrayList<>();
-            res = root.agregeResultats(zone, 0, parametres);
-            ResParPM.put(zone, res);
+            List<ZAPM> res = root.agregeResultats(zone, 0, parametres);
+            this.ResParPM.put(zone, res);
             System.out.println("Nombre de ZAPM en zone "+zone+" : "+(res.size()));
             
             // transport
             UO transport = new UO(zone, false, true, parametres);
             for (AreteBLOM a : root.getFilles()){
-                a.calculTransport(transport, parametres);
+                List<Lineaires> linTransport = a.getLineairesTransport(parametres, zone);
+                for (Lineaires lin : linTransport){
+                    transport.addLineaires(lin);
+                }
                 transport.addIncomingCables(a.getCables(false, zone), false, parametres.calibre, parametres.getCalibreMin());
             }
             transports.put(zone, transport);   
@@ -187,7 +236,7 @@ public class BLO {
             this.uo.setPMint(listePMint, parametres);
         this.uo.setVertical(immeubles, parametres);
         this.uo.setNRO(parametres);
-        return uo;
+        return this.uo;
     }
     
     public List<String> stringsUO(int detail){
@@ -208,32 +257,54 @@ public class BLO {
         for (String zone : zones){
             int i = 1;
             for (ZAPM zapm : this.ResParPM.get(zone)){
-                //if (zapm.isDistri){
-                    liste.add(zoneMacro+";"+codeNRO+";"+codeNRO+"_"+zone+"_"+i+";"+zapm.getStringDistri());
-                    i++;
-                //}
+                liste.add(zoneMacro+";"+codeNRO+";"+codeNRO+"_"+zone+"_"+i+";"+zapm.getStringDistri());
+                i++;
             }
         }
         return liste;
     }
     
-    public void shapefilePM(GeometryFactory gf, SimpleFeatureCollection collectionPM, SimpleFeatureBuilder featureBuilderPM){
+    public List<SimpleFeature> getFeaturesPM(GeometryFactory gf, SimpleFeatureBuilder featureBuilderPM){
+        List<SimpleFeature> res = new ArrayList<>();
         for(String zone : zones){
-            int i = 1;
             for (ZAPM zapm : ResParPM.get(zone)){
-                i = zapm.toShapefilePM(codeNRO, gf, collectionPM, featureBuilderPM, i);
+                res.add(zapm.getFeaturePM(codeNRO+"_"+zoneMacro.replace("ZMD_", ""), zoneMacro.replace("ZMD_", ""), gf, featureBuilderPM));
             }
             if (zone.equals("ZTD_HD")){
                 for (Noeud pm : listePMint){
                     featureBuilderPM.add(gf.createPoint(new Coordinate(pm.coord[0], pm.coord[1])));
-                    featureBuilderPM.add(codeNRO+"_"+zone+"_"+i);
+                    featureBuilderPM.add(zoneMacro.replace("ZMD_", ""));
+                    featureBuilderPM.add(codeNRO+"_"+zoneMacro.replace("ZMD_", ""));
                     featureBuilderPM.add("PM_int");
+                    featureBuilderPM.add(pm.numPM);
                     featureBuilderPM.add(pm.demandeLocaleInt());
-                    collectionPM.add(featureBuilderPM.buildFeature(null));
-                    i++;
+                    featureBuilderPM.add("");
+                    res.add(featureBuilderPM.buildFeature(null));
                 }
             }
         }
+        return res;
+    }
+    
+    public static SimpleFeatureType getNROFeatureType(CoordinateReferenceSystem crs){
+        SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
+        builder.setName("NRO");
+        builder.setCRS(crs);
+        builder.add("the_geom", Point.class);
+        builder.length(4).add("ZONE_MACRO", String.class);
+        builder.length(13).add("ID_NRO", String.class);
+        builder.add("NB_LIGNES", Integer.class);
+        builder.add("NB_FIBRES", Integer.class);
+        return builder.buildFeatureType();
+    }
+    
+    SimpleFeature getFeatureNRO(GeometryFactory gf, SimpleFeatureBuilder featureBuilder){
+        featureBuilder.add(gf.createPoint(new Coordinate(root.n.coord[0], root.n.coord[1])));
+        featureBuilder.add(zoneMacro.replace("ZMD_", ""));
+        featureBuilder.add(codeNRO+"_"+zoneMacro.replace("ZMD_", ""));
+        featureBuilder.add(this.nbLignes);
+        featureBuilder.add(this.uo.getNbIncomingFibres(false));
+        return featureBuilder.buildFeature(null);
     }
     
     public Couts computeAndGetCouts(CoutsUnitaires couts){
@@ -241,25 +312,21 @@ public class BLO {
         return c;
     }
     
-    public int[] getAnalyseGC(){
-        int[] result = new int[13];
-        for (String zone : this.zones){
-            if (zones.contains(zone)){
-                for (ZAPM zapm : ResParPM.get(zone)){
-                    int[] boitiers = zapm.getPBOGC();
-                    for (int i = 0;i<13;i++){
-                        result[i] += boitiers[i];
-                    }
-                }
-            }
-        }
-        return result;
+    public int[] getPBO(){
+        return this.uo.getPBO();
     }
     
+    public void printShapePBO(String cheminResultats, CoordinateReferenceSystem crs, GeometryFactory gf){
+        SimpleFeatureType typeShpPBO = AreteBLOM.getPBOFeatureType(crs, zoneMacro);
+        SimpleFeatureBuilder featureBuilderPBO = new SimpleFeatureBuilder(typeShpPBO);
+        List<SimpleFeature> featuresPBO = root.getFeaturesPBO(zoneMacro.replace("ZMD_", ""), codeNRO+"_"+zoneMacro.replace("ZMD_", ""), zones, gf, featureBuilderPBO);
+        Shapefiles.printShapefile(cheminResultats + "/PBO_" + codeNRO+"_"+zoneMacro.replace("ZMD_", ""), typeShpPBO, featuresPBO);
+    }
+
     public void clearArbre(){
         root = null; // on libère de la place en mémoire car on n'a plus besoin de l'arbre
     }
-    
+
     public List<String> getNROPM(String dpt){
         List<String> res = new ArrayList<>();
         String debut = dpt+";"+zoneMacro+";"+codeNRO;

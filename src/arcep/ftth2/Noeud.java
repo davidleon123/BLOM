@@ -1,22 +1,52 @@
+/*
+ * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * * Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package arcep.ftth2;
 
 import java.util.List;
 
 public class Noeud extends NoeudAGarder {
         
+    // numéro en tant que PM:
+    int numPM;
+    
     // en tant que PMint
     boolean isPMint;
     
-    // champs techniques pour l'algo de placement des PM ext
+    // champs techniques pour l'algo de placement des PM ext "mediane"
     int lignesInfSeuil;
     int lignesSupSeuil;
     List<Double> distri;
+    
+    // champ technique pour l'algo de placement des PM ext "moyenne"
+    double longueurMoyenne;
     
     // en tant que PM ext 
     private int taillePM_ZMD = 0;
     private int taillePM_ZTD_BD = 0;
     private int taillePM_ZTD_HD = 0;
-    
 
     public Noeud(String[] fields, int seuilPMint){
         this.id = Integer.parseInt(fields[0]);
@@ -39,7 +69,7 @@ public class Noeud extends NoeudAGarder {
             }
         }
     }
-        
+
     public boolean decreaseDemande(String zone){
         if (zone.equals("ZTD")){
             int i = (int) Math.ceil(Math.random()*this.demandeLocaleTotale());
@@ -54,7 +84,7 @@ public class Noeud extends NoeudAGarder {
         }
         return this.demandeLocaleTotale() == 0;
     }
-    
+
     public void increaseDemande(String zone, int seuilPMint){
         if (zone.equals("ZTD")){
             int i = (int) Math.ceil(Math.random()*demandeLocaleTotale());
@@ -70,7 +100,6 @@ public class Noeud extends NoeudAGarder {
             this.modifieDemande("ZMD", 1);
         }
     }
-    
 
     public int demandeLocaleExt(String zone){
         switch(zone){
@@ -80,11 +109,11 @@ public class Noeud extends NoeudAGarder {
                 return this.getDemandeLocale(zone);
         }
     }
-    
+
     public boolean isPMint(){
-        return this.isPMint;
+        return this.demandeLocaleInt() > 0;
     }
-    
+
     public int demandeLocaleInt(){
         if (this.isPMint) return this.getDemandeLocale("ZTD_HD");
         else return 0;
@@ -95,7 +124,7 @@ public class Noeud extends NoeudAGarder {
     public boolean isPMExt(String zone) {
         return taillePM(zone) > 0;
     }
-    
+
     public int taillePM(String zone) {
         switch (zone) {
             case "ZMD":

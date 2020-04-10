@@ -1,17 +1,55 @@
-
+/*
+ * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * * Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package arcep.ftth2;
 
 import java.io.*;
 import java.util.*;
-import javax.swing.JList;
 
 public class ModuleTopo {
     
-    final String cheminReseau;
+    final private String cheminReseau;
+    final private String adresseLP, adresseSR, adresseNRA, adresseCollecte;
+    final private String adresseDptsLimitrophes;
+    final private String adresseShapesDptsMetro, nameShapeDpts;
+    final private String[] shapesDOM, fichiersZonage;
+
     private Map<String,List<String>> dptsLimitrophes;
     
-    public ModuleTopo(String cheminReseau){
-        this.cheminReseau = cheminReseau;
+    public ModuleTopo(String[] fichiersCuivre, String adresseDptsLimitrophes, String adresseShapesDptsMetro, String[] shapesDOM, String nameShapeDpts,
+            String[] fichiersZonage){
+        this.cheminReseau = Main.cheminReseau;
+        this.adresseLP = fichiersCuivre[0];
+        this.adresseSR = fichiersCuivre[1];
+        this.adresseNRA = fichiersCuivre[2];
+        this.adresseCollecte = fichiersCuivre[3];
+        this.adresseDptsLimitrophes = adresseDptsLimitrophes;
+        this.adresseShapesDptsMetro = adresseShapesDptsMetro;
+        this.shapesDOM = shapesDOM;
+        this.nameShapeDpts = nameShapeDpts;
+        this.fichiersZonage = fichiersZonage;
     }
     
     public void readDptsLimitrophes(){
@@ -19,7 +57,8 @@ public class ModuleTopo {
         String[] donneesLigne;
         dptsLimitrophes = new HashMap<>();
         try{
-            BufferedReader limitrophes = new BufferedReader(new FileReader(cheminReseau+"liste-de-departements-limitrophes-francais.txt"));
+            BufferedReader limitrophes = new BufferedReader(new FileReader(this.adresseDptsLimitrophes));
+            limitrophes.readLine();
             while ((ligne = limitrophes.readLine()) != null) {
                 donneesLigne = ligne.split(";");
                 List<String> voisins = new ArrayList<>();
@@ -36,36 +75,37 @@ public class ModuleTopo {
             e.printStackTrace();
         }
     }
-    
+
     public List<String> getLimitrophes(String dpt){
         return dptsLimitrophes.get(dpt);
     }
-    
+
     public void pretraitementShapes(){
+                
         Thread t = new Thread() {
             @Override
             public void run() {
-                Shapefiles.conversion("Q:/Donnees limites administratives IGN/GEOFLA/FranceMetro",cheminReseau+"Dpts/FranceMetro","DEPARTEMENT","27572");
-                Shapefiles.creerShpDptEtendus(5, cheminReseau, "Dpts");
-                Shapefiles.conversion("U:/3-donnees mises a disposition - pour tout le monde/32-donnees metiers/323-BLF/ZTD", cheminReseau+"ZTD", "PBD_PHD_aggr", "27572");
-                Shapefiles.conversion("U:/3-donnees mises a disposition - pour tout le monde/32-donnees metiers/323-BLF/AMII", cheminReseau+"AMII", "AMII", "27572");
+                Shapefiles.buffer(5, adresseShapesDptsMetro, nameShapeDpts, cheminReseau+"DptsEtendus");
+                for (String shapeDOM : shapesDOM){
+                    Shapefiles.buffer(5, shapeDOM, nameShapeDpts, cheminReseau+"DptsEtendus");
+                }
             }
         };
         t.start();
     }
-    
+
     public void pretraitementReseauCuivre(){
         Thread t = new Thread() {
 
             @Override
             public void run() {
-                // Décompressez le zip des LP sur votre C:/Inputs/LP avant de lancer cette étape
-                filtreDpts("C:/Inputs/LP", "Lignes principales en ND banalises.csv");
-                prepareNRA(cheminReseau+"listeNRA.csv", cheminReseau+"NRA");
-                prepareSR(cheminReseau+"listeSR.txt", cheminReseau+"SR");
-                createPC("C:/Inputs/LP", cheminReseau+"PC1");
-                Shapefiles.zonagePC(cheminReseau+"DptEtendus-5km", cheminReseau+"Communes", cheminReseau+"ZTD/PBD_PHD_aggr.shp", cheminReseau+"AMII/AMII.shp", cheminReseau+"PC1", cheminReseau+"PC2", dptsLimitrophes);
-                compteLignesCuivre("Q:/Modele FttH v2/files/PC2", "Q:/Modele FttH v2/files/acces-cuivre.csv");
+                String dossierLPParDpt = filtreDpts(adresseLP);
+                prepareNRA(adresseNRA, cheminReseau+"NRA");
+                prepareSR(adresseSR, cheminReseau+"SR");
+                createPC(dossierLPParDpt, cheminReseau+"PC1");
+                Shapefiles.zonagePC(cheminReseau+"DptsEtendus-5km", fichiersZonage[2], fichiersZonage[0], fichiersZonage[1], cheminReseau+"PC1", cheminReseau+"PC2", dptsLimitrophes);
+                compteLignesCuivre(cheminReseau+"PC2", cheminReseau+"acces-cuivre.csv");
+                System.out.println("Fin du prétraitement des fichiers cuivre");
                 // attention zonagePC est long (>3h)
             }
         };
@@ -78,56 +118,83 @@ public class ModuleTopo {
 
             @Override
             public void run() {
-                separeCollecte(cheminReseau+"Collecte/", "liens_collecte_fibre.csv", "liens_optiques_");
+                System.out.println("Début du prétraitement de la collecte");
+                separeCollecte(adresseCollecte, cheminReseau+"Collecte");
+                System.out.println("Fin du prétraitement de la collecte");
             }
         };
 
         t.start();
     }
     
-    public void createZAPCSRNRA(){
+    public void createZAPCSRNRA(boolean lireSR, boolean suppression){
         Thread t = new Thread() {
-
+            
             @Override
             public void run() {
-                Shapefiles.createVoronoiPC(cheminReseau,"DptEtendus-5km", "NRA", "SR", "PC2", "VoronoiPC");
-                Shapefiles.fusionShapes(cheminReseau, "VoronoiPC", "ZASR", 2, true, "");
-                Shapefiles.fusionShapes(cheminReseau, "ZASR", "ZANRA", 2, true, ""); // supprimer les dossiers des shapefiles qu'on veut recréer avant
+                System.out.println("Début de la création des ZANRA");
+                File f;
+                if (suppression){
+                    f = new File(cheminReseau+"VoronoiPC");
+                    if (f.exists()) delete(f);
+                }
+                Shapefiles.createVoronoiPC(cheminReseau,"DptsEtendus-5km", "NRA", "SR", "PC2", "VoronoiPC");
+                if (lireSR){
+                    if (suppression){
+                        f = new File(cheminReseau+"ZASR");
+                        if (f.exists()) delete(f);
+                    }
+                    Shapefiles.fusionShapes(cheminReseau, "VoronoiPC", "ZASR", 2, true, "");
+                    if (suppression){
+                        f = new File(cheminReseau+"ZANRA");
+                        if (f.exists()) delete(f);
+                    }
+                    Shapefiles.fusionShapes(cheminReseau, "ZASR", "ZANRA", 2, true, "");
+                } else{
+                    if (suppression){
+                        f = new File(cheminReseau+"ZANRA");
+                        if (f.exists()) delete(f);
+                    }
+                    Shapefiles.fusionShapes(cheminReseau, "VoronoiPC", "ZANRA", 3, true, "");
+                }
+                System.out.println("Fin de la création des ZANRA");
             }
         };
 
         t.start();
     }
     
-    public void regrouperNRANRO(final Parametres parametres, final double distMax){
-        Thread t = new Thread() {
-
-            @Override
-            public void run() {
-
-                long start = System.currentTimeMillis();
-                System.out.println("Début du regroupement des NRA en NRO");
-                int dist = (int) Math.round(distMax);
-                String nro = "NRO-"+String.valueOf(dist)+"km";
-                String adresseNRO = cheminReseau+nro;
-                File dirZANRO = new File(cheminReseau+"ZA"+nro);
+    public void regrouperNRANRO(List<String> listeDpts, int nbLignesMinNRO, double distMaxNRONRA, boolean lireSR){
+        
+        long start = System.currentTimeMillis();
+        System.out.println("Début du regroupement des NRA en NRO");
+        int dist = (int) Math.round(distMaxNRONRA);
+        String nro = "NRO-"+String.valueOf(dist)+"km";
+        String adresseNRO = cheminReseau+nro;
+        File dirZANRO = new File(cheminReseau+"ZA"+nro);
+        File dirNRO = new File(adresseNRO);
+        dirNRO.mkdirs();
+        File dirTestCollecte = new File(cheminReseau+"TestCollecte");
+        dirTestCollecte.mkdirs();
                 
-                try{
-                    File dirNRO = new File(adresseNRO);
-                    dirNRO.mkdirs();
-                    
-                    PrintWriter cuivre = new PrintWriter(cheminReseau+"EtatInitialCuivre.csv");
-                    cuivre.println("Departement;Zone;NRA;Nombre de SR;Nombre de PC;Nombre de lignes");
+        Thread t = new Thread() {
 
+            @Override
+            public void run() {
+                try{
+                    // fichiers d'analyse
+                    PrintWriter cuivre = new PrintWriter(cheminReseau+"EtatInitialCuivre.csv");
+                    cuivre.println(enteteAnalyse(true, lireSR));
                     PrintWriter cuivre3 = new PrintWriter(cheminReseau+"EtatCuivre_10km.csv");
-                    cuivre3.println("Departement;Zone;NRA;Nombre de SR;Nombre de PC;Nombre de lignes");
+                    cuivre3.println(enteteAnalyse(true, lireSR));
                     PrintWriter NRONRA = new PrintWriter(adresseNRO+"/Analyse"+nro+".csv");
-                    NRONRA.println("Departement;Zone;NRO;Nombre de NRA;Nombre de SR;Nombre de PC;Nombre de lignes");
-                    for (String dpt : parametres.getListeDpts()) {
+                    NRONRA.println(enteteAnalyse(false, lireSR));
+                    
+                    for (String dpt : listeDpts) {
                         System.out.println("Initialisation pour le département n°"+dpt);
-                        ReseauCuivre reseauC = new ReseauCuivre(cheminReseau, dpt);
+                        ReseauCuivre reseauC = new ReseauCuivre(cheminReseau, dpt, nbLignesMinNRO, 10000*distMaxNRONRA);
                         reseauC.loadNRA(cheminReseau+"NRA");
-                        reseauC.loadSR(cheminReseau+"SR");
+                        if (lireSR) reseauC.loadSR(cheminReseau+"SR");
                         reseauC.loadPC(cheminReseau+"PC2", false, null);
                         for (String s : reseauC.etat()){
                             cuivre.println(s);
@@ -136,13 +203,13 @@ public class ModuleTopo {
                         for (String s : reseauC.etat()){
                             cuivre3.println(s);
                         }
-                        reseauC.regrouperNRACollecte(parametres, adresseNRO);
+                        reseauC.regrouperNRACollecte(adresseNRO, "Collecte");
                         for (String s : reseauC.getAnalyseNRO()){
                             NRONRA.println(dpt+";"+s);
                         }
                         File zanro = new File(dirZANRO+"/"+dirZANRO.getName()+"_"+dpt);
                         if (zanro.exists()){
-                            Shapefiles.delete(zanro);
+                            delete(zanro);
                         }
                     }
                     NRONRA.close();
@@ -155,18 +222,41 @@ public class ModuleTopo {
                 Shapefiles.fusionShapes(cheminReseau, "ZANRA", dirZANRO.getName(), 1, false, nro);
             }
         };
-
+        
+        try{
+            PrintWriter writer = new PrintWriter(dirNRO+"/parametres.txt");
+            writer.println("Paramètres utilisés pour produire les résultats du présent dossier "+dirNRO.getName());
+            writer.println();
+            writer.print("Utilisation des sous-répartiteurs du réseau cuivre d'Orange : ");
+            if (lireSR) writer.println("OUI");
+            else writer.println("NON");
+            writer.println("Nombre minimal théorique de lignes desservies par un NRO : "+nbLignesMinNRO+" lignes");
+            writer.println("Distance maximale entre NRA regroupé et NRA regroupeur autorisant à passer sous le seuil précédant : "+distMaxNRONRA+ " km");
+            writer.close();
+        } catch(FileNotFoundException e){
+            e.printStackTrace();
+        }
         t.start();
     }
     
-    public void traceReseau(final Parametres parametres, final boolean limitrophes, final boolean gc, final String nro, final JList jList1, final List<String> listeDptRoutier){
+    private String enteteAnalyse(boolean NRA, boolean lireSR){
+        String entete = "Departement;Zone";
+        if (NRA)
+            entete+=";NRA";
+        else
+            entete+=";NRO;Nombre de NRA";
+        if(lireSR)
+            entete+=";Nombre de SR";
+        entete+=";Nombre de PC;Nombre de lignes";
+        return entete;
+    }
+    
+    public void traceReseau(boolean limitrophes, boolean gc, String nro, List<String> dptChoisis, double toleranceNoeud, double seuilToleranceGC2){
         Thread t = new Thread() {
 
             @Override
             public void run() {
-                Object[] dptChoisis = jList1.getSelectedValues();
-                parametres.setListesDpts(dptChoisis, listeDptRoutier);
-                Shapefiles.preparerGraphes(parametres, cheminReseau, "ZA"+nro, nro, "BLO", nro.replace("NRO", ""), limitrophes, gc);
+                Shapefiles.preparerGraphes(dptChoisis, dptsLimitrophes, cheminReseau, "ZA"+nro, nro, "BLO", nro.replace("NRO", ""), limitrophes, gc, toleranceNoeud, seuilToleranceGC2);
             }
         };
 
@@ -175,16 +265,18 @@ public class ModuleTopo {
     
     // méthodes pour le module A
     
-    static void filtreDpts(String chemin, String nomFichier) {
+    private String filtreDpts(String nomFichier) {
+        File f = new File(nomFichier);
+        File dir = new File(f.getParent()+"/LP");
+        dir.mkdir();
         String line, dpt;
         int n=0;
         HashMap<String,PrintWriter> writers = new HashMap<>();
         long start = System.currentTimeMillis();
         
         try {
-            File dir = new File(chemin+"/LP");
-            dir.mkdir();
-            BufferedReader br = new BufferedReader(new FileReader(chemin+"/"+nomFichier));
+            
+            BufferedReader br = new BufferedReader(new FileReader(f));
             String entete = br.readLine();
             
             while ((line = br.readLine()) != null) {
@@ -210,15 +302,16 @@ public class ModuleTopo {
             e.printStackTrace();
         }
         System.out.println("Temps pour filtrer par département : "+(System.currentTimeMillis()-start)+" milisecondes");
+        return dir.getPath();
     }
     
     
-    static void createPC(String chemin, String destination) {
+    private void createPC(String origine, String destination) {
         String line;
         long lignesExclues = 0;
         
         try {
-            File dir = new File(chemin+"/LP");
+            File dir = new File(origine);
             File newDir = new File(destination);
             newDir.mkdirs();
             String pc;
@@ -237,7 +330,7 @@ public class ModuleTopo {
                     if (fields.length >= 13){ 
                         pc = fields[6];
                         if (!data.containsKey(pc)){
-                            data.put(pc, new PCBasic(pc+";"+fields[5]+";"+pc+";"+fields[7]+";"+fields[10]+";"+fields[11]+";"+fields[12]));
+                            data.put(pc, new PCBasic(fields[4]+";"+fields[5]+";"+pc+";"+fields[7]+";"+fields[10]+";"+fields[11]+";"+fields[12]));
                         } else data.get(pc).addLigne();
                     } else{
                         lignesExclues++;
@@ -266,7 +359,7 @@ public class ModuleTopo {
         } 
     }
     
-    static class PCBasic {
+    private class PCBasic {
         private final String infos;
         private int nbLignes;
 
@@ -285,7 +378,7 @@ public class ModuleTopo {
 
     }
     
-    static void compteLignesCuivre(String origine, String destination){
+    private void compteLignesCuivre(String origine, String destination){ // ajouter une annonce de fin
         try{
             PrintWriter writer = new PrintWriter(destination);
             writer.println("Departement;ZTD;ZMD_AMII;ZMD_RIP");
@@ -329,7 +422,7 @@ public class ModuleTopo {
         
     }
 
-    static void prepareNRA(String origine, String destination){
+    private void prepareNRA(String origine, String destination){
         Map<String, List<String>> dptNRA = litEtSepare(origine);
         File dir = new File(destination);
         dir.mkdirs();
@@ -353,37 +446,37 @@ public class ModuleTopo {
         }
     }
     
-    static void prepareSR(String origine, String destination){
-        Map<String, List<String>> dptSR = litEtSepare(origine);
-        File dir = new File(destination);
-        dir.mkdirs();
-        String nra;
-        String[] fields;
-        for (String dpt : dptSR.keySet()){
-            try{
-                PrintWriter writer = new PrintWriter(dir+"/"+dir.getName()+"_"+dpt+".csv");
-                writer.println("SR;NRA;X;Y;Referentiel");
-                for (String line : dptSR.get(dpt)){
-                    fields = line.split(";");
-                    nra = fields[1];
-                    if (nra.endsWith("E00"))
-                        nra = nra.substring(0, 5) + "EOO";
-                    writer.println(fields[0]+";"+nra+";"+fields[6]+";"+fields[7]+";"+fields[8]);
+    private void prepareSR(String origine, String destination){
+            Map<String, List<String>> dptSR = litEtSepare(origine);
+            File dir = new File(destination);
+            dir.mkdirs();
+            String nra;
+            String[] fields;
+            for (String dpt : dptSR.keySet()){
+                try{
+                    PrintWriter writer = new PrintWriter(dir+"/"+dir.getName()+"_"+dpt+".csv");
+                    writer.println("SR;NRA;X;Y;Referentiel");
+                    for (String line : dptSR.get(dpt)){
+                        fields = line.split(";");
+                        nra = fields[1];
+                        if (nra.endsWith("E00"))
+                            nra = nra.substring(0, 5) + "EOO";
+                        writer.println(fields[0]+";"+nra+";"+fields[6]+";"+fields[7]+";"+fields[8]);
+                    }
+                    writer.close();
+                } catch(FileNotFoundException e){
+                    e.printStackTrace();
                 }
-                writer.close();
-            } catch(FileNotFoundException e){
-                e.printStackTrace();
             }
-        }
     }
     
-    private static String dpt(String codeNRA){
+    private String dpt(String codeNRA){
         if(codeNRA.substring(0, 2).equals("97"))
             return codeNRA.substring(0, 3);
         else return codeNRA.substring(0, 2);
     }
     
-    private static Map<String, List<String>> litEtSepare(String fichier){
+    private Map<String, List<String>> litEtSepare(String fichier){
         Map<String, List<String>> res = new HashMap<>();
         String line, dpt;
         try{
@@ -403,32 +496,40 @@ public class ModuleTopo {
         return res;
     }
     
-    static void separeCollecte(String collecte, String origine, String destination){
+    private void separeCollecte(String origine, String destination){
         Map<String, List<String>> res = new HashMap<>();
-        String line, dpt1, dpt2, header;
+        String line, dpt1, dpt2, header, codeNRA1, codeNRA2;
         String[] fields;
         try{
-            BufferedReader reader = new BufferedReader(new FileReader(collecte+origine));
+            BufferedReader reader = new BufferedReader(new FileReader(origine));
             header = reader.readLine();
             while ((line = reader.readLine()) != null){
                 fields = line.split(";");
-                dpt1 = fields[1].substring(0,2);
-                if (dpt1.equals("97")) dpt1 = fields[1].substring(0, 3); // outremer
-                dpt2 = fields[4].substring(0,2);
-                if (dpt2.equals("97")) dpt2 = fields[4].substring(0, 3); // outremer
+                codeNRA1 = fields[1];
+                // attention aux codes NRA qui ont l'air de nombres en notation scientifique (vérifier aussi le fichier d'entrée sous Notepad++)
+                if (codeNRA1.substring(5,7).equals("E0"))
+                    codeNRA1 = codeNRA1.substring(0, 5) + "EOO";
+                dpt1 = codeNRA1.substring(0,2);
+                if (dpt1.equals("97")) dpt1 = codeNRA1.substring(0, 3); // outremer
+                codeNRA2 = fields[4];
+                if (codeNRA2.substring(5,7).equals("E0"))
+                    codeNRA2 = codeNRA2.substring(0, 5) + "EOO";
+                dpt2 = codeNRA2.substring(0,2);
+                if (dpt2.equals("97")) dpt2 = codeNRA2.substring(0, 3); // outremer
                 if (!res.containsKey(dpt1))
-                    res.put(dpt1, new ArrayList<String>());
+                    res.put(dpt1, new ArrayList<>());
                 res.get(dpt1).add(line);
                 if (!dpt2.equals(dpt1)){
                     if (!res.containsKey(dpt2))
-                        res.put(dpt2, new ArrayList<String>());
+                        res.put(dpt2, new ArrayList<>());
                     res.get(dpt2).add(line);
                 }
             }
             for (String dpt : res.keySet()){
-                File dir = new File(collecte+dpt);
-                dir.mkdir();
-                PrintWriter liens = new PrintWriter(dir+"/"+destination+dpt+".csv", "utf-8");
+                File dir = new File(destination);
+                dir.mkdirs();
+                System.out.println("Impression du fichier des liens de collecte pour le département "+dpt);
+                PrintWriter liens = new PrintWriter(dir+"/"+dir.getName()+"_"+dpt+".csv", "utf-8");
                 liens.println(header);
                 for (String s : res.get(dpt)){
                     liens.println(s);
@@ -438,6 +539,15 @@ public class ModuleTopo {
         } catch (Exception e){
             e.printStackTrace();
         }
+    }
+    
+    private void delete(File f){
+       if (f.isDirectory()){
+            for (File child : f.listFiles()){
+                delete(child);
+            }
+       }
+       f.delete();
     }
     
 }

@@ -1,4 +1,28 @@
-
+/*
+ * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * * Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package arcep.ftth2;
 
 import java.io.*;
@@ -10,20 +34,18 @@ import com.vividsolutions.jts.precision.GeometryPrecisionReducer;
 import com.vividsolutions.jts.triangulate.VoronoiDiagramBuilder;
 
 import org.geotools.data.*;
+import org.geotools.data.collection.ListFeatureCollection;
 import org.geotools.data.shapefile.ShapefileDataStore;
 import org.geotools.data.shapefile.ShapefileDataStoreFactory;
 import org.geotools.data.simple.*;
 import org.geotools.factory.CommonFactoryFinder;
 import org.geotools.feature.*;
 import org.geotools.feature.simple.*;
-import org.geotools.geometry.jts.JTS;
-import org.geotools.referencing.CRS;
+import org.geotools.geometry.jts.JTSFactoryFinder;
 
 import org.opengis.feature.simple.*;
 import org.opengis.feature.type.*;
-import org.opengis.referencing.crs.*;
 import org.opengis.filter.*;
-import org.opengis.referencing.operation.MathTransform;
 
 public class Shapefiles {
     
@@ -110,76 +132,6 @@ public class Shapefiles {
         return longueursGC;
 
     }
-    
-    public static void conversion(String origine, String destination, String name, String epsg){
-        System.out.println("Début de la conversion");
-        SimpleFeature feature;
-        try{
-            // accès au fichier d'origine
-            FileDataStore store = FileDataStoreFinder.getDataStore(new File(origine +"/"+ name + ".shp"));
-            SimpleFeatureType type = store.getSchema();
-            FeatureReader<SimpleFeatureType, SimpleFeature> reader = store.getFeatureReader();            
-            
-            // préparation de la reprojection
-            CoordinateReferenceSystem dataCRS = type.getCoordinateReferenceSystem();
-            CRSAuthorityFactory factory = CRS.getAuthorityFactory(true);
-            CoordinateReferenceSystem newCRS = factory.createProjectedCRS("EPSG:"+epsg);
-            MathTransform transform = CRS.findMathTransform(dataCRS, newCRS, true);
-
-            System.out.println(newCRS.toWKT());
-            
-            //création d'un nouveau type pour les nouveaux features
-            SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
-            builder.setName("DPT");
-            builder.addAll(type.getAttributeDescriptors());
-            builder.setCRS(newCRS);
-            SimpleFeatureType format = builder.buildFeatureType();
-            
-            // création du featureBuilder et de la featureCollection
-            SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(format);
-            SimpleFeatureCollection collection = FeatureCollections.newCollection();
-            
-            // lecture, transformation et copie
-            while (reader.hasNext()){
-                feature = reader.next();
-                Geometry geometry = JTS.transform((Geometry) feature.getDefaultGeometry(), transform);
-                featureBuilder.add(geometry);
-                for (int i = 1;i<feature.getAttributeCount();i++){
-                    featureBuilder.add(feature.getAttribute(i));
-                }
-                collection.add(featureBuilder.buildFeature(null));
-            }
-            reader.close();
-            
-            // fermeture du fichier d'origine
-            store.dispose();
-            
-            // création du nouveau fichier
-            ShapefileDataStoreFactory dataStoreFactory = new ShapefileDataStoreFactory();
-            File dir = new File(destination);
-            dir.mkdirs();
-            File shp = new File(dir.getAbsolutePath()+"/"+name+".shp");
-            ShapefileDataStore dataStore = (ShapefileDataStore) dataStoreFactory.createDataStore(shp.toURI().toURL());
-            dataStore.createSchema(format);
-            dataStore.forceSchemaCRS(newCRS);
-            
-            // écriture des données
-            Transaction transaction = new DefaultTransaction("create");
-            SimpleFeatureSource newFeatureSource = dataStore.getFeatureSource(dataStore.getTypeNames()[0]);
-            if (newFeatureSource instanceof SimpleFeatureStore) {
-                SimpleFeatureStore featureStore = (SimpleFeatureStore) newFeatureSource;
-                featureStore.setTransaction(transaction);
-                featureStore.addFeatures(collection);
-                transaction.commit();
-                transaction.close();
-            }
-
-            System.out.println("Terminé !");
-
-        } catch (Exception e){
-            e.printStackTrace();
-        }
-    }
 
     // contrôle des PC, attribution des zones et préformatage
     public static void zonagePC(String shpDpts, String dossierCommunes, String shpZTD, String shpAMII, String origine, String destination, Map<String, List<String>> dptLimitrophes){
@@ -257,7 +209,7 @@ public class Shapefiles {
             }
             ficCommunes.close();
             
-            // y compris pour les déartements voisins
+            // y compris pour les départements voisins
             for (String voisin : dptLimitrophes.get(dpt)){
                 ficCommunes = new BufferedReader(new FileReader(dirCommunes+"/"+dirCommunes.getName()+"_"+voisin+".csv"));
                 ficCommunes.readLine();
@@ -360,7 +312,7 @@ public class Shapefiles {
                 MultiPolygon geom = (MultiPolygon) feature.getDefaultGeometry();
                 String dpt = ((String) feature.getAttribute(1)).substring(0, 2);
                 if (!DptToGeos.containsKey(dpt))
-                    DptToGeos.put(dpt, new ArrayList<MultiPolygon>());
+                    DptToGeos.put(dpt, new ArrayList<>());
                 DptToGeos.get(dpt).add(geom);
             }
             reader.close();  
@@ -381,20 +333,14 @@ public class Shapefiles {
         }
     }
     
-    public static void creerShpDptEtendus(int distance, String adresse, String origine){
-        String[] dossiers = {"976"};//{"FranceMetro", "971", "972", "973", "974"};
-        for (String dossier : dossiers){
-            bufferDpt(distance,adresse, origine, dossier);
-        }
-    }
-    
-    private static void bufferDpt(int distance, String adresseCommune, String origine, String dossier){
-        System.out.println("Début ");
+    public static void buffer(int distance, String dossierShape, String nameShape, String destination){
+        System.out.println("Début du buffer des départements - fichier "+dossierShape);
         String dpt;
         int i;
         SimpleFeature feature;
+        File dirShape = new File(dossierShape);
         try{
-            FileDataStore store = FileDataStoreFinder.getDataStore(new File(adresseCommune+origine+"/"+dossier+"/DEPARTEMENT.shp"));
+            FileDataStore store = FileDataStoreFinder.getDataStore(new File(dirShape+"/"+nameShape+".shp"));
             SimpleFeatureType type = store.getSchema();
             // description
             List<AttributeDescriptor> descriptors = type.getAttributeDescriptors();
@@ -407,53 +353,42 @@ public class Shapefiles {
             }
             System.out.println("La géométrie est de type "+type.getGeometryDescriptor().getType().getName().toString()+" et il y a "+(descriptors.size()-1)+" champ(s) supplémentaire(s).");
             
-            //création d'une nouvelle collection pour stocker les features modifiés
+            //création d'un "builder" et d'un "type" pour les features modifiés
+            GeometryFactory gf = JTSFactoryFinder.getGeometryFactory();
             SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
             builder.setName("DptEtendu");
             builder.setCRS(type.getCoordinateReferenceSystem()); 
-            builder.add("Enveloppe", MultiPolygon.class);
+            builder.add("the_geom", MultiPolygon.class);
             builder.length(3).add("CODE_DPT", String.class);
             builder.length(30).add("NOM_DPT", String.class);
             SimpleFeatureType format = builder.buildFeatureType();
-            SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(format);
-            //SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(type);
-            
-            ShapefileDataStoreFactory dataStoreFactory = new ShapefileDataStoreFactory();
+            SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(format);            
             
             // lecture du fichier et transformation
             FeatureReader<SimpleFeatureType, SimpleFeature> reader = store.getFeatureReader();
             while (reader.hasNext()){
                 feature = reader.next();
-                if (dossier.equals("FranceMetro")) dpt = (String) feature.getAttribute(2);
-                else dpt = dossier.replace("Dpt", "");
+                if (dirShape.getName().equals("FranceMetro")) dpt = (String) feature.getAttribute(2);
+                else dpt = dirShape.getName().replace("Dpt", "");
                 System.out.println("Département : "+dpt);
-                Geometry geom = (Geometry) feature.getDefaultGeometry();                
-                featureBuilder.add(geom.buffer((double) distance*1000));
+                Geometry geom = (Geometry) feature.getDefaultGeometry();
+                
+                // création du nouveau feature
+                Geometry union = geom.buffer((double) distance*1000);
+                if (union instanceof Polygon){
+                    featureBuilder.add(gf.createMultiPolygon(new Polygon[]{(Polygon) union}));
+                } else if (union instanceof MultiPolygon){
+                    featureBuilder.add((MultiPolygon) union);
+                } else System.out.println("Problème lors du buffer pour le département "+dpt);
                 featureBuilder.add(dpt);
                 featureBuilder.add((String) feature.getAttribute(3));
-                //for (i=1;i<feature.getAttributeCount();i++){
-                //    featureBuilder.add(feature.getAttribute(i));
-                //}
-                SimpleFeatureCollection collection = FeatureCollections.newCollection();
-                collection.add(featureBuilder.buildFeature(null));
+                List<SimpleFeature> featuresList = new ArrayList<>();
+                featuresList.add(featureBuilder.buildFeature(null));
+                
                 // création du shapefile à un feature
-                File dir = new File(adresseCommune+"/DptEtendus-"+distance+"km/"+dpt);
+                File dir = new File(destination+"-"+distance+"km/"+dpt);
                 dir.mkdirs();
-                File shp = new File(dir.getAbsolutePath()+"/"+dpt+".shp");
-                ShapefileDataStore dataStore = (ShapefileDataStore) dataStoreFactory.createDataStore(shp.toURI().toURL());
-                dataStore.createSchema(format);
-                //dataStore.createSchema(type);
-                Transaction transaction = new DefaultTransaction("create");
-                SimpleFeatureSource featureSource = dataStore.getFeatureSource(dataStore.getTypeNames()[0]);
-                if (featureSource instanceof SimpleFeatureStore) {
-                    SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSource;
-                    featureStore.setTransaction(transaction);
-                    featureStore.addFeatures(collection);
-                    transaction.commit();
-                    transaction.close();
-                } else {
-                    System.out.println("Le fichier n'est pas accessible en écriture");
-                }
+                printShapefile(dir.getAbsolutePath()+"/"+dpt, format, featuresList);
             }
             reader.close();
             store.dispose();
@@ -462,12 +397,12 @@ public class Shapefiles {
 
         } catch (Exception e){
             e.printStackTrace();
-        }
-                    
+        }     
     }
     
     public static void createVoronoiPC(String cheminReseau, String origine, String adresseNRA, String adresseSR, String adressePC, String destination){
         long start = System.currentTimeMillis();
+        System.out.println("Création des polygones de Vooronoï des PC à partir du répertoire : "+cheminReseau+origine);
         File dir = new File(cheminReseau+origine);
         for (File f : dir.listFiles()){
             String dpt = f.getName();
@@ -502,9 +437,9 @@ public class Shapefiles {
                     // on récupère les PC au bon format
                     GeometryFactory gf = new GeometryFactory(new PrecisionModel());
                     //ReseauCuivre reseauCuivre = new ReseauCuivre(cheminReseau+adresseCuivre, dpt, true, false, null);
-                    ReseauCuivre reseauCuivre = new ReseauCuivre(cheminReseau, dpt);
+                    ReseauCuivre reseauCuivre = new ReseauCuivre(cheminReseau, dpt, -1, -1); // les deux derniers arguments ne sont pas utiles ici
                     reseauCuivre.loadNRA(cheminReseau+"/"+adresseNRA);
-                    reseauCuivre.loadSR(cheminReseau+"/"+adresseSR);
+                    //reseauCuivre.loadSR(cheminReseau+"/"+adresseSR);
                     reseauCuivre.loadPC(cheminReseau+"/"+adressePC, false, null);
                     Map<Coordinate, String[]> listeNoeuds = new HashMap<>();
                     System.out.println("Nombre de PC en entrée de Voronoï : "+reseauCuivre.getListePC().size());
@@ -524,14 +459,14 @@ public class Shapefiles {
                     SimpleFeatureTypeBuilder builderZAPC = new SimpleFeatureTypeBuilder();
                     builderZAPC.setName("ZAPC");
                     builderZAPC.setCRS(type.getCoordinateReferenceSystem()); //Lambert 2 Etendu ou autre en outremer
-                    builderZAPC.add("Zone", MultiPolygon.class); // Polygon pose problème pour certains départements
+                    builderZAPC.add("the_geom", MultiPolygon.class);
                     builderZAPC.length(50).add("CodePC", String.class);
                     builderZAPC.length(20).add("CodeSR", String.class);
                     builderZAPC.length(8).add("CodeNRA", String.class);
                     SimpleFeatureType formatShpZAPC = builderZAPC.buildFeatureType();
                     SimpleFeatureBuilder featureBuilderZAPC = new SimpleFeatureBuilder(formatShpZAPC);
-                    SimpleFeatureCollection collectionZAPC = FeatureCollections.newCollection();
-
+                    List<SimpleFeature> listeZAPC = new ArrayList<>();
+                    
                     // calcul Voronoï
                     VoronoiDiagramBuilder vdb = new VoronoiDiagramBuilder();
                     vdb.setClipEnvelope(geometry.getEnvelopeInternal()); // on envoie le plus petit rectangle contenant geometry (c'est plus simple ?)
@@ -548,28 +483,11 @@ public class Shapefiles {
                         featureBuilderZAPC.add(codes[0]);
                         featureBuilderZAPC.add(codes[1]);
                         featureBuilderZAPC.add(codes[2]);
-                        collectionZAPC.add(featureBuilderZAPC.buildFeature(null));
+                        listeZAPC.add(featureBuilderZAPC.buildFeature(null));
                     }
 
                     // création du fichier
-
-                    File shpZAPC = new File(dossier.getPath()+"/"+dossier.getName()+".shp");
-                    ShapefileDataStoreFactory dataStoreFactory = new ShapefileDataStoreFactory();
-                    ShapefileDataStore dataStoreZAPC = (ShapefileDataStore) dataStoreFactory.createDataStore(shpZAPC.toURI().toURL());
-                    dataStoreZAPC.createSchema(formatShpZAPC);
-
-                    //écriture des données
-                    Transaction transaction = new DefaultTransaction("create");
-                    SimpleFeatureSource featureSourceZAPC = dataStoreZAPC.getFeatureSource(dataStoreZAPC.getTypeNames()[0]);
-                    if (featureSourceZAPC instanceof SimpleFeatureStore) {
-                        SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSourceZAPC;
-                        featureStore.setTransaction(transaction);
-                        featureStore.addFeatures(collectionZAPC);
-                        transaction.commit();
-                        transaction.close();
-                    } else {
-                        System.out.println("Le fichier n'est pas accessible en écriture");
-                    }
+                    printShapefile(dossier.getPath()+"/"+dossier.getName(), formatShpZAPC, listeZAPC);
 
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -578,7 +496,7 @@ public class Shapefiles {
         }
         System.out.println("Fin de createVoronoiPC ! Temps écoulé : "+(System.currentTimeMillis() - start)/1000+" secondes.");
     }
-    
+
     public static void fusionShapes(String commun, String or, String destination, int index, boolean codeInFile, String adresseTableNRONRA){
         String origine = commun+or;
         String adresseTable = commun+adresseTableNRONRA;
@@ -682,7 +600,7 @@ public class Shapefiles {
                         SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
                         builder.setName("ZA");
                         builder.setCRS(type.getCoordinateReferenceSystem()); 
-                        builder.add("Zone", MultiPolygon.class);
+                        builder.add("the_geom", MultiPolygon.class);
                         if (codeInFile)
                             builder.length(20).add("Code_"+destination, String.class);
                         else 
@@ -692,8 +610,10 @@ public class Shapefiles {
                         }
                         SimpleFeatureType format = builder.buildFeatureType();
                         SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(format);
-                        SimpleFeatureCollection collection = FeatureCollections.newCollection();
+                        //SimpleFeatureCollection collection = FeatureCollections.newCollection();
                         store.dispose();
+                        
+                        List<SimpleFeature> newFeatures = new ArrayList<>();
 
                         // fusion et création des nouveaux features
                         GeometryFactory gf = new GeometryFactory();
@@ -705,28 +625,11 @@ public class Shapefiles {
                             for (int i = 2;i<n;i++){
                                 if (i!=index) featureBuilder.add(attributes.get(code).get(i));
                             }
-                            collection.add(featureBuilder.buildFeature(null));
+                            newFeatures.add(featureBuilder.buildFeature(null));
                         }
 
                         //création du fichier
-
-                        File shp = new File(shpDir.getPath()+"/"+shpDir.getName()+".shp");
-                        ShapefileDataStoreFactory dataStoreFactory = new ShapefileDataStoreFactory();
-                        ShapefileDataStore dataStore = (ShapefileDataStore) dataStoreFactory.createDataStore(shp.toURI().toURL());
-                        dataStore.createSchema(format);
-
-                        //écriture des données
-                        Transaction transaction = new DefaultTransaction("create");
-                        SimpleFeatureSource featureSourceZAPC = dataStore.getFeatureSource(dataStore.getTypeNames()[0]);
-                        if (featureSourceZAPC instanceof SimpleFeatureStore) {
-                            SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSourceZAPC;
-                            featureStore.setTransaction(transaction);
-                            featureStore.addFeatures(collection);
-                            transaction.commit();
-                            transaction.close();
-                        } else {
-                            System.out.println("Le fichier n'est pas accessible en écriture");
-                        }
+                        printShapefile(shpDir.getPath()+"/"+shpDir.getName(), format, newFeatures);
 
                     } catch (IOException e){
                         e.printStackTrace();
@@ -737,23 +640,12 @@ public class Shapefiles {
         System.out.println("Fin de fusionShapes !");
     }
     
-    private static String shpFileName(String type, String dpt, String gc){
-        switch(type){
-            case "GC":
-                return "C:/Inputs/"+gc+"/"+dpt+"/"+"GVIFR_ARC_in_DEPT_"+dpt+".shp";
-            case "routier":
-                return "C:/Inputs/Routes/"+dpt+"/ROUTE_"+dpt+".shp";
-            default:
-                return "ERROR!";
-        }
-    }
-    
     private static void readShpReseau(String dpt, String type, Geometry enveloppe, Reseau reseau, boolean voisin){
         System.out.print("Début lecture du réseau "+type+" du département "+dpt+" en tant que réseau ");
         if (voisin) System.out.println("voisin");
         else System.out.println("propre.");
         try{
-            FileDataStore store = FileDataStoreFinder.getDataStore(new File(shpFileName(type, dpt, "GC2")));
+            FileDataStore store = FileDataStoreFinder.getDataStore(new File(Main.getShapefileReseau(type, dpt)));
             SimpleFeatureType schema = store.getSchema();
             System.out.println("CRS du shapefile : "+schema.getCoordinateReferenceSystem().getName().getCode());
             
@@ -804,9 +696,10 @@ public class Shapefiles {
         }
     }
     
-    public static void preparerGraphes(Parametres parametres, String racine, String dossierContours, String dossierNRO, String dossierBLO, String options, boolean gc, boolean limitrophes){
+    public static void preparerGraphes(List<String> dptChoisis, Map<String,List<String>> dptsLimitrophes, String racine, String dossierContours, String dossierNRO, String dossierBLO, String options, boolean limitrophes, boolean gc, double toleranceNoeud, double seuilToleranceGC2){
         long start = System.currentTimeMillis();
         System.out.println("Début du module topologique !");
+        String line;
         String[] types = {"routier"};
         if (gc)
             types = new String[]{"GC", "routier"};
@@ -817,15 +710,36 @@ public class Shapefiles {
         destination += options;
         File dir = new File(racine+destination);
         dir.mkdir();
+        
         try{
-            PrintWriter aretesAjoutees = new PrintWriter(parametres.racineResultats+"/aretes_ajoutees.csv");
+            PrintWriter writer = new PrintWriter(dir+"/parametres.txt");
+            writer.println("Paramètres utilisés pour produire les résultats du présent dossier "+dir.getName());
+            writer.println();
+            BufferedReader paramNRO = new BufferedReader(new FileReader(racine+dossierNRO+"/parametres.txt"));
+            paramNRO.readLine();
+            paramNRO.readLine();
+            while ((line = paramNRO.readLine()) != null){
+                writer.println(line);
+            }
+            writer.println();
+            writer.print("Utilisation du (des) réseau(x) du (des) département(s) limitrophe(s) : ");
+            if (limitrophes) writer.println("OUI");
+            else writer.println("NON");
+            writer.print("Utilisation directe du tracé du réseau de génie civil d'Orange : ");
+            if (gc) writer.println("OUI");
+            else writer.println("NON");
+            writer.println("Longueur maximale pour identifier point du réseau cuivre et noeud de réseau physique : "+toleranceNoeud+" m");
+            writer.println("Longueur maxiamle de préférence pour le CG : "+seuilToleranceGC2+ " m");
+            writer.close();
+
+            PrintWriter aretesAjoutees = new PrintWriter(dir+"/aretes_ajoutees.csv");
             aretesAjoutees.println("Departement;Zone;Nombre;Longueur moyenne");
-            for (String dpt : parametres.getListeDpts()){ // ceux qui sont sélectionnés donc
+            for (String dpt : dptChoisis){ // ceux qui sont sélectionnés donc
                 double nbArAjoutees = 0, longArAjoutees = 0;
                 System.out.println("Début pour le département "+dpt);
                           
                 List<String> dptVoisins = null;
-                if (limitrophes) dptVoisins = parametres.getLimitrophes(dpt);
+                if (limitrophes) dptVoisins = dptsLimitrophes.get(dpt);
                 File dirZANRO = new File(racine+dossierContours+"/"+dossierContours+"_"+dpt);
                 File[] dirZones = dirZANRO.listFiles();
                 String[] zones = new String[dirZones.length];
@@ -846,7 +760,7 @@ public class Shapefiles {
                         String nro = (String) feature.getAttribute("Code_ZANRO");
                         System.out.println("Début pour le NRO "+nro);
                         Geometry geo = (Geometry) feature.getDefaultGeometry();
-                        Reseau reseau = new Reseau(nro, zone, parametres);
+                        Reseau reseau = new Reseau(nro, zone, toleranceNoeud, seuilToleranceGC2);
                         for (String type : types){
                             readShpReseau(dpt, type, geo, reseau, false);
                             if (limitrophes){
@@ -859,7 +773,7 @@ public class Shapefiles {
                         reseau.test();
 
                         BufferedReader rcNRO = new BufferedReader(new FileReader(racine+dossierNRO+"/"+dossierNRO+"_"+dpt+"/"+dossierNRO+"_"+dpt+"_"+zone+"/ListePC_"+nro+".csv"));
-                        String line = rcNRO.readLine();
+                        line = rcNRO.readLine();
                         String[] fields = line.split(";");
                         reseau.setCentre(Double.parseDouble(fields[6]), Double.parseDouble(fields[7]));
                         double[] res  = reseau.forceConnexite();
@@ -871,12 +785,12 @@ public class Shapefiles {
                             reseau.addPC(Double.parseDouble(fields[1]), Double.parseDouble(fields[2]), fields[4], Integer.parseInt(fields[3]), Integer.parseInt(fields[5]) == 1);
                         }
                         reseau.store(dossier);
-                        computePourcentagesGC(nro, dossier.getPath(), new File(shpFileName("GC", dpt, "GC")), dirZANRO.getPath()+"/"+dirZANRO.getName()+"_"+zone, "ModesPose");
+                        computePourcentagesGC(nro, dossier.getPath(), new File(Main.getShapefileReseau("GC", dpt)), dirZANRO.getPath()+"/"+dirZANRO.getName()+"_"+zone, "ModesPose");
                     }
                     reader.close();
                     store.dispose();
                     aretesAjoutees.println(dpt+";"+zone+";"+nbArAjoutees+";"+String.valueOf(longArAjoutees/nbArAjoutees).replace(".",","));
-            }
+                }
             }
             aretesAjoutees.close();
         } catch (Exception e){
@@ -885,12 +799,44 @@ public class Shapefiles {
         System.out.println("Fin de preparerGraphes ! Temps écoulé : "+(System.currentTimeMillis() - start)/1000+" secondes.");
     }
     
-    public static void delete(File f){
-       if (f.isDirectory()){
-            for (File child : f.listFiles()){
-                delete(child);
+    public static void printShapefile(String filePath, SimpleFeatureType type, List<SimpleFeature> featuresList){
+        try{
+            File shp = new File(filePath+".shp");
+            System.out.println("Début de l'impression du shapefile "+shp);
+            
+            ShapefileDataStoreFactory dataStoreFactory = new ShapefileDataStoreFactory();
+            ShapefileDataStore dataStorePM = (ShapefileDataStore) dataStoreFactory.createDataStore(shp.toURI().toURL());
+
+            dataStorePM.createSchema(type);
+
+            Transaction transaction = new DefaultTransaction("create");
+
+            String typeName = dataStorePM.getTypeNames()[0];
+            SimpleFeatureSource featureSourcePoints = dataStorePM.getFeatureSource(typeName);
+            SimpleFeatureType shape_type = featureSourcePoints.getSchema();
+            System.out.println("Format du shape : "+shape_type);
+
+            if (featureSourcePoints instanceof SimpleFeatureStore) {
+                System.out.println("Début de l'impression du fichier "+shp);
+                SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSourcePoints;
+                SimpleFeatureCollection collectionPoints = new ListFeatureCollection(type,featuresList);
+                featureStore.setTransaction(transaction);
+                try{
+                    featureStore.addFeatures(collectionPoints);
+                    transaction.commit();
+                } catch (Exception problem) {
+                    problem.printStackTrace();
+                    transaction.rollback();
+                } finally {
+                    transaction.close();
+                    System.out.println("Impression réussie pour "+shp);
+                }
+            } else {
+                System.out.println("Le shapefile n'est pas accessible en écriture");
             }
-       }
-       f.delete();
+        }catch(IOException e){
+            e.printStackTrace();
+        }
     }
+
 }

@@ -1,10 +1,39 @@
-
+/*
+ * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * * Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package arcep.ftth2;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;
-import org.geotools.data.simple.SimpleFeatureCollection;
+import com.vividsolutions.jts.geom.Point;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
+import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
+import org.opengis.feature.simple.SimpleFeature;
+import org.opengis.feature.simple.SimpleFeatureType;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
+
 
 public class ZAPM {
     
@@ -22,10 +51,10 @@ public class ZAPM {
     private final int[] distributionLongueurs;    
 
     public ZAPM(Noeud n, double distance, String zone, Parametres parametres){
-        this.id = n.id;
+        this.id = n.numPM;
         this.zone = zone;
         uo = new UO(zone, true, false, parametres);
-        uo.setNbLignes(n.taillePM(zone), parametres);
+        uo.setLignesEtPM(n.taillePM(zone), parametres);
 
         this.x = n.coord[0];
         this.y = n.coord[1];
@@ -36,10 +65,10 @@ public class ZAPM {
         distributionLongueurs = new int[2000];
         distributionLongueurs[0] = n.demandeLocaleExt(zone);
     }
-    
-    public void add(AreteBLOM a, Parametres parametres, double distancePM){
-        uo.addLineaires(a, parametres);
-        uo.addPBO((int) Math.ceil(a.n.demandeLocaleExt(zone)/(double) parametres.nbMaxLignesPBO), a.modePose);
+
+    public void addArete(AreteBLOM a, Parametres parametres, double distancePM){
+        uo.addLineaires(a.getLineaires(parametres, true, zone));
+        uo.addPBO((int) Math.ceil(a.n.demandeLocaleExt(zone)/(double) parametres.nbMaxLignesPBO), a.modePoseSortie);
         if(!a.n.isPMExt(zone)){
             int demandeLocale = a.n.demandeLocaleExt(zone);
             if (demandeLocale > 0){
@@ -50,25 +79,25 @@ public class ZAPM {
             this.longueurTotale += demandeLocale*distancePM;
         }
     }
-    
+
     public int getID(){
         return this.id;
     }
-    
+
     public void addIncomingCables(AreteBLOM a, Parametres parametres){
         //System.out.println("Zone : "+zone);
         int[] cablesFille = a.getCables(true, zone);
         uo.addIncomingCables(cablesFille, true, parametres.calibre, parametres.getCalibreMin());
     }
-    
+
     public UO getUO(){
         return uo;
     }
-    
+
     public String getStringUO(String codePM, Parametres parametres, int detail){
         return codePM+";"+x+";"+y+";"+String.valueOf(distanceNRO).replace(".", ",")+";"+uo.print(parametres, detail);
     }
-    
+
     public String getStringDistri(){
         String ligne = String.valueOf(distanceNRO).replace(".", ",")+";"
                 +String.valueOf(longueurMin).replace(".", ",")+";"
@@ -78,7 +107,7 @@ public class ZAPM {
         }
         return ligne;
     }
-    
+
     public double percentile(double pourcent){
         int compteur = 0;
         int seuil = (int) Math.floor(this.uo.getNbLignes()*pourcent);
@@ -90,13 +119,33 @@ public class ZAPM {
         return Double.NaN;
     }
     
-    public int toShapefilePM(String CodeNRO, GeometryFactory gf, SimpleFeatureCollection collectionPM, SimpleFeatureBuilder featureBuilderPM, int i){
+    // attention en cas d'évolution, la classe BLO construit aussi des features à partir du type défini par cette fonction
+    public static SimpleFeatureType getPMFeatureType(CoordinateReferenceSystem crs){
+        SimpleFeatureTypeBuilder builderPM = new SimpleFeatureTypeBuilder();
+        builderPM.setName("PointsMutualisation");
+        builderPM.setCRS(crs);
+        builderPM.add("the_geom", Point.class);
+        builderPM.length(4).add("ZONE_MACRO", String.class);
+        builderPM.length(13).add("NRO", String.class);
+        builderPM.length(6).add("TYPE", String.class);
+        builderPM.add("ID", Integer.class);
+        builderPM.add("NB_LIGNES", Integer.class);
+        builderPM.add("NB_FIBRES", Integer.class);
+        return builderPM.buildFeatureType();
+    }
+    
+    public SimpleFeature getFeaturePM(String CodeNRO, String zoneMacro, GeometryFactory gf, SimpleFeatureBuilder featureBuilderPM){
         featureBuilderPM.add(gf.createPoint(new Coordinate(x, y)));
-        featureBuilderPM.add(CodeNRO+"_"+zone+"_"+i);
-        featureBuilderPM.add("PM_ext");
+        featureBuilderPM.add(zoneMacro);
+        featureBuilderPM.add(CodeNRO);
+        if (zone.equals("ZTD_HD"))
+            featureBuilderPM.add("PM100");
+        else
+            featureBuilderPM.add("PM300");
+        featureBuilderPM.add(this.id);
         featureBuilderPM.add(uo.getNbLignes());
-        collectionPM.add(featureBuilderPM.buildFeature(null));
-        return i++;
+        featureBuilderPM.add(uo.getNbIncomingFibres(true));
+        return featureBuilderPM.buildFeature(null);
     }
 
     public String getNROPM(Parametres parametres){
@@ -104,10 +153,6 @@ public class ZAPM {
         if (zone.equals("ZTD_HD"))
             type = "PM100";
         return type+";"+String.valueOf(distanceNRO).replace(".", ",")+";"+uo.getNbLignes() + uo.printIncomingCables(true)+";"+String.valueOf(this.longueurTotale/this.uo.getNbLignes()).replace(".", ",");
-    }
-    
-    public int[] getPBOGC(){
-        return uo.getPBOGC();
     }
     
 }

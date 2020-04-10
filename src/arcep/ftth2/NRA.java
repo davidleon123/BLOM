@@ -1,4 +1,28 @@
-
+/*
+ * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * * Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package arcep.ftth2;
 
 import java.util.*;
@@ -15,15 +39,15 @@ public class NRA extends PointReseau {
     HashSet<NRA> listeNRAduNRO = new HashSet<>();
     boolean traite = false;
     NRA nro;
-    
+
     public NRA(String identifiant, double x, double y, boolean nouveau){
         this.init(identifiant, x, y, nouveau, "");
     }
-    
+
     public NRA(String identifiant, double x, double y, boolean nouveau, String zone) {
         this.init(identifiant, x, y, nouveau, zone);
     }
-    
+
     public NRA(NRA nra, String zone){
         this.init(nra.identifiant, nra.x, nra.y, nra.nouveau, zone);
     }
@@ -36,29 +60,29 @@ public class NRA extends PointReseau {
         listeNRAduNRO.add(this);
         this.nouveau = nouveau;
     }
-    
+
     public void addNRA(String codeNRA){
         nraComplementaires.add(codeNRA);
     }
-    
+
     public List<String> getNRAComplementaires(){
         return this.nraComplementaires;
     }
-    
+
     public int podi(){
         return this.PODI;
     }
-    
+
     public void ajoutPC(PC pc){
         listePC.add(pc);
         PODI+= pc.lignes;
     }
-    
+
     public void clearListePC(){
         listePC.clear();
         PODI = 0;
     }
-    
+
     public List<PC> getPC(){
         return listePC;
     }
@@ -75,7 +99,7 @@ public class NRA extends PointReseau {
             }
         }
     }
-    
+
     public void regrouper(NRA nra) {
         this.ajoutPC(nra.listePC);
         this.traite = true;
@@ -113,11 +137,11 @@ public class NRA extends PointReseau {
         res.add(this);
         return res;
     }
-    
+
     public boolean hasNRA(NRA nra){
         return this.listeNRAduNRO.contains(nra);
     }
-    
+
     public void addToEquivalent(NRA nra){
         for (NRA equiv : this.listeNRAduNRO){
             if (equiv.identifiant.equals(nra.identifiant)){
@@ -127,7 +151,7 @@ public class NRA extends PointReseau {
             }
         }
     }
-    
+
     public void absorbe(NRA nra){
         String newZone = this.zone;
         if (this.zone.equals("ZTD"))
@@ -142,7 +166,7 @@ public class NRA extends PointReseau {
             this.fils.add(pt);
         }
     }
-    
+
     public void setNewZone(String zone){
         this.zone = zone;
         for (PC pc : this.listePC){
@@ -158,7 +182,7 @@ public class NRA extends PointReseau {
             PODI += PC.lignes;
         }
     }
-    
+
     public void addFils(PointReseau pt, KDTree<NRA> indexNRA){
         if (nouveau) {
             double[] coord = new double[2];
@@ -178,11 +202,11 @@ public class NRA extends PointReseau {
         }
         this.fils.add(pt);
     }
-    
+
     public List<PointReseau> getFils(){
         return this.fils;
     }
-    
+
     public double distance(NRA nra){
         return Math.sqrt(Math.pow(this.x - nra.x, 2)+Math.pow(this.y - nra.y, 2));
     }
