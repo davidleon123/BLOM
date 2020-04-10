@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * Copyright (c) 2020, Autorité de régulation des communications électroniques, des postes et de la distribution de la presse
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

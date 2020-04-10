@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * Copyright (c) 2020, Autorité de régulation des communications électroniques, des postes et de la distribution de la presse
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -57,7 +57,7 @@ public class BLO {
         System.out.println("Nombre d'arêtes : "+ aretes.size());
         this.codeNRO = codeNRO;
         
-        // passage des zones "vision macro" (ZTD/AMII/RIP) au zones "architecture réseau" (ZTD_HD, ZTD_BD, ZMD)
+        // passage des zones de régulation (ZTD/AMII/RIP) au zones "architecture réseau" (ZTD_HD, ZTD_BD, ZMD)
         zoneMacro = zone;
         zones = new HashSet<>(); 
         if (zone.equals("ZTD")){
@@ -82,30 +82,31 @@ public class BLO {
                 if (path == null) {
                     System.out.println("Path null pour le noeud " + noeud.id);
                 } else {
-                    //System.out.println("On accroche à l'arbre le noeud n°" + noeud.id);
+                    
+                    // Parcours du chemin entre le NRO et le noeud (PBO)
+                    // pour ajouter les noeuds à l'arbre BLOM
+                    // mere est initialisée à "root" (origine virtuelle du réseau)
+                    // puis la fille devient mere à mesure du parcours
                     AreteBLOM mere = root;
                     for (Long id : path){
                         boolean ajout = true;
+                        // Parcours des AreteBLOM filles de l'AreteBLOM mere
+                        // si l'une d'entre elle correspond à l'ID du path, elle
+                        // est ajoutée à l'arbre
                         for (AreteBLOM fille : mere.getFilles()){
                             if (fille.id == id){
                                 ajout = false;
                                 fille.addNoeudLocal(noeud, zones);
-                                //System.out.println("L'arête "+fille.id+" a "+fille.lignesAval(zone)+" lignes.");
                                 mere = fille;
                                 break;
                             }
                         }
                         if (ajout){
-                            //System.out.println("Id de l'arête à ajouter : "+id);
                             Arete a = aretes.get(id);
-                            //System.out.println("Id de l'arête mère : "+mere.id);
-                            //System.out.println("Id du noeud commun : "+mere.n.id);
                             Noeud n = noeuds.get(a.getAutreExtremite(mere.n.id));
-                            //System.out.println("Id du noeud aval : "+n.id);
                             try{
                                 AreteBLOM fille = new AreteBLOM(a, n, mere.n);
                                 fille.addNoeudLocal(n, zones);
-                                //System.out.println("L'arête "+fille.id+" a "+fille.lignesAval(zone)+" lignes.");
                                 mere.addFille(fille);
                                 mere = fille;
                             } catch (Exception e){
@@ -183,7 +184,7 @@ public class BLO {
             System.out.println("Longueur totale : "+longueurTotale);
             System.out.println("LongueurP finale : "+longueurParcourue);
             System.out.println("Niveau de la racine : "+niveauRoot);
-        } else{
+        } else {
             root.setModesPose();
         }
     }
@@ -191,6 +192,18 @@ public class BLO {
     public void calculerUOAretes(){
         for (AreteBLOM a : root.getFilles()){
             a.calculUO(zones, parametres); // fonction récursive
+        }
+    }
+    
+    public void calculerDemandeAretes() {
+        for (AreteBLOM a : root.getFilles()){
+            a.calculDemande(zones, parametres); // fonction récursive
+        }
+    }
+    
+    public void calculerAutresUOAretes() {
+        for (AreteBLOM a : root.getFilles()){
+            a.calculAutresUO(zones, parametres); // fonction récursive
         }
     }
     

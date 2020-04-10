@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * Copyright (c) 2020, Autorité de régulation des communications électroniques, des postes et de la distribution de la presse
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,10 +26,14 @@
 package arcep.ftth2;
 
 import org.jgrapht.graph.DefaultWeightedEdge;
-import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.*;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import org.opengis.feature.simple.SimpleFeature;
+import org.geotools.feature.simple.SimpleFeatureBuilder;
+import org.opengis.feature.simple.SimpleFeatureType;
+import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
 public class Arete extends DefaultWeightedEdge{
 
@@ -40,7 +44,7 @@ public class Arete extends DefaultWeightedEdge{
     double longueur;
     List<NoeudInterne> intermediaires;
     private int idN1, idN2;
-    private List<double[]> points;
+    List<double[]> points;
 
     public Arete(){} 
 
@@ -54,9 +58,15 @@ public class Arete extends DefaultWeightedEdge{
         this.modePose = modePose;
         this.idProprio = idProprio;
         this.longueur = longueur;
-        intermediaires = new ArrayList<>();
+        this.intermediaires = new ArrayList<>();
+        this.points = new ArrayList<>();
     }
 
+    /*
+    *   Correspond à la construction via la lecture du fichier Aretes_[NRO].csv
+    *   ID / Noeud1 / Noeud2 / ModePose / Longueur / Id propriétaire /
+    *   nb points (noeuds exclus) / [points : x2 / y2 / x3 / y3 etc.]
+    */
     public Arete(String[] fields){
         id = Long.parseLong(fields[0]);
         idN1 = Integer.parseInt(fields[1]);
@@ -76,31 +86,33 @@ public class Arete extends DefaultWeightedEdge{
         this.modePose = ar.modePose;
         this.nbLignes = ar.nbLignes;
         this.idProprio = ar.idProprio;
+        this.points = ar.points;
     }
 
     public void addIntermediaire(NoeudInterne n){
         intermediaires.add(n);
+        this.points.add(n.coord);
     }
 
     public void addIntermediaires(List<double[]> intermediaires, int indice, NoeudAGarder n1, NoeudAGarder n2, Reseau reseau){
         Node precedent = n1;
         double distance = 0;
-        while (!intermediaires.isEmpty()){
-            double[] coord = intermediaires.remove(0);
+        for(double coord[] : intermediaires) {
             distance+=precedent.distance(coord);
             precedent = reseau.getNoeudInterne(coord, indice, n1, n2, this, Parametres.arrondir(distance,1));
             this.intermediaires.add((NoeudInterne) precedent);
+            this.points.add(coord);
         }
     }
 
     public void changeAndAddIntermediaires(List<NoeudInterne> noeuds, NoeudAGarder n1, NoeudAGarder n2){
         Node precedent = n1;
         double distance = 0;
-        while (!noeuds.isEmpty()){
-            NoeudInterne n = noeuds.remove(0);
+        for(NoeudInterne n : noeuds) {
             distance+=precedent.distance(n);
             n.actualise(this, n1, n2, distance);
             intermediaires.add(n);
+            points.add(n.coord);
             precedent = n;
         }
     }
@@ -122,17 +134,88 @@ public class Arete extends DefaultWeightedEdge{
             return -1;
         }
     }
-
-    public Coordinate[] getPoints(Noeud n1, Noeud n2){
-        int n = points.size()+2;
+    
+    /*
+    *   Fonction utilisée pour constituer les shapefiles de sortie Aretes_[dept].csv
+    *   Constitue un vecteur de coordonnées avec les noeuds extrémités
+    *   et les points internes
+    *   Amélioration 2019 : la fonction renvoie désormais les points
+    *   dans le "bon ordre" quel que soit le sens des noeuds
+    */
+    public Coordinate[] getPoints(NoeudAGarder n1, NoeudAGarder n2){
+        int n = 2;
+        if (points != null) n = points.size()+2;
+        
         Coordinate[] coords = new Coordinate[n];
         coords[0] = new Coordinate(n1.coord[0], n1.coord[1]);
-        for (int i = 0;i<n-2;i++){
-            double[] coord = points.get(i);
-            coords[i+1] = new Coordinate(coord[0], coord[1]);
+        if(n > 2) {
+            if(n == 3) {
+                double[] coord = points.get(0);
+                coords[1] = new Coordinate(coord[0], coord[1]);
+            } else {
+                // Pour connaitre le sens dans lequel ajouter les points, on compare
+                // la somme des distances des extrémités aux premier et dernier points
+                // dans un sens et dans l'autre
+                if(n1.distance(points.get(0)) +  n2.distance(points.get(n-3))  < n1.distance(points.get(n-3)) + n2.distance(points.get(0))) {
+                    // n1 est bien le "premier" point de l'arête
+                    for (int i = 0;i<n-2;i++){
+                        double[] coord = points.get(i);
+                        coords[i + 1] = new Coordinate(coord[0], coord[1]);
+                    }
+                } else {
+                    // n1 est le "dernier" point de l'arête
+                    for (int i = 0;i<n-2;i++){
+                        double[] coord = points.get(i);
+                        coords[n - i - 2] = new Coordinate(coord[0], coord[1]);
+                    }
+                }
+            }
         }
+        
         coords[n-1] = new Coordinate(n2.coord[0], n2.coord[1]);
         return coords;
     }
-
+    
+    /**
+     * Fonction permettant d'initialiser l'objet FeatureType pour le tracé
+     * des shapefiles des arêtes
+     * 
+     * @param crs (CoordinateReferenceSystem) Système de coordonnées de référence pour l'écriture du shapefile
+     * @return SimpleFeatureType spécifiant les attributs pour le tracé de l'arête
+     */
+    public static SimpleFeatureType getFeatureType(CoordinateReferenceSystem crs){
+        SimpleFeatureTypeBuilder builderLineaires = new SimpleFeatureTypeBuilder();
+        builderLineaires.setName("ARETE");
+        builderLineaires.setCRS(crs);
+        builderLineaires.add("the_geom", MultiLineString.class);
+        builderLineaires.add("ID", Integer.class);
+        builderLineaires.length(13).add("ID_RSO", String.class);
+        builderLineaires.add("LONGUEUR", Double.class);
+        builderLineaires.add("LONG_POND", Double.class);
+        builderLineaires.add("MODE_POSE", Integer.class);
+        return builderLineaires.buildFeatureType();
+    }
+    
+    /**
+     * Fonction permettant de créer la Feature correspondant au tracé de l'arête
+     * dans un shapefile
+     * 
+     * @param pts (Coordinate[]) Coordonnées des points de l'arête
+     * @param idReseau (String) Nom du NRO / zone
+     * @param longeurPonderee (double) longueur de l'arête dans le graphe
+     * @param gf
+     * @param featureBuilderLineaires SimpleFeatureBuilder permettant le tracé de la SimpleFeature
+     * @return SimpleFeature représentant le tracé de l'arête
+     */
+    public SimpleFeature getFeature(Coordinate[] pts, String idReseau, double longeurPonderee, GeometryFactory gf,SimpleFeatureBuilder featureBuilderLineaires){
+        
+        featureBuilderLineaires.add(gf.createMultiLineString(new LineString[]{gf.createLineString(pts)}));
+        featureBuilderLineaires.add(this.id);
+        featureBuilderLineaires.add(idReseau);
+        featureBuilderLineaires.add(this.longueur);
+        featureBuilderLineaires.add(longeurPonderee);
+        featureBuilderLineaires.add(this.modePose);
+        
+        return featureBuilderLineaires.buildFeature(null);
+    }
 }

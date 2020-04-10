@@ -25,34 +25,44 @@
  */
 package arcep.ftth2;
 
-/*
-* Un NoeudInterne est un noeud intermédiaire sur l'arête
-* reliant deux NoeudAGarder
-* Un NoeudInterne peut devenir un NoeudAGarder s'il est le noeud qui minimise
-* le plus court chemin NRO-PC d'un PC ; la méthode actualise permet alors de
-* modifier les NoeudInterne voisins de celui qui est devenu NoeudAGarder
-*/
-public class NoeudInterne extends Node{
+import java.util.*;
+import java.io.*;
+
+/**
+ * Cette classe permet de lire un fichier au format .ini pour récupérer
+ * la valeur des variables d'initialisation, notamment le chemin des
+ * fichiers d'entrée du modèle
+ */
+public class IniReader {
     
-    Arete a;
-    NoeudAGarder[] voisins = new NoeudAGarder[2];
-    double distance;
-    int indice;
+    Properties ini;
+    String iniPath;
+    
+    public IniReader(String iniPath){
+        this.ini = new Properties();
+        this.iniPath = iniPath;
 
-    public NoeudInterne(int id, double[] coord, NoeudAGarder n1, NoeudAGarder n2, Arete a, double distance, int indice){
-        this.id = id;
-        this.coord = coord;
-        this.a = a;
-        voisins[0] = n1;
-        voisins[1] = n2;
-        this.distance = distance;
-        this.indice = indice;
+        try {
+            ini.load(new FileInputStream(iniPath));
+        }
+        catch(Exception e) {
+            System.out.println(e);
+        }
     }
-
-    public void actualise(Arete a, NoeudAGarder n1, NoeudAGarder n2, double distance){
-        this.a = a;
-        this.voisins[0] = n1;
-        this.voisins[1] = n2;
-        this.distance = distance;
+    
+//    public static void main(String args[]) {
+//        IniReader ir = new IniReader("Blod.ini");
+//        //ir.readIni();
+//        System.out.println(ir.getVal("df_results_path"));
+//        System.out.println(ir.getVal("df_data_path"));
+//    }
+//    
+    public Properties getIni() {
+        return ini;
     }
+    
+    public String getVal(String k) {
+        return ini.getProperty(k);
+    }
+    
 }

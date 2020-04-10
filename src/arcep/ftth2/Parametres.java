@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * Copyright (c) 2020, Autorité de régulation des communications électroniques, des postes et de la distribution de la presse
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -263,7 +263,6 @@ public class Parametres {
        this.seuil_boitier = seuil_boitier;
     }
     
-    // pour l'instant on ne compte pas les coupleurs aux PM donc ces trois paramètrs ne sont pas utilisés
     private int nbLignesParCoupleurPMExt;
     private int nbLignesParCoupleurPMint;
     private int nbLignesParCoupleurNRO;

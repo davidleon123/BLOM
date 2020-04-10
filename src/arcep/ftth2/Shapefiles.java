@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * Copyright (c) 2020, Autorité de régulation des communications électroniques, des postes et de la distribution de la presse
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,6 +49,11 @@ import org.opengis.filter.*;
 
 public class Shapefiles {
     
+    /*
+    * Cette méthode écrit le fichier (ModePose_[idNRO].csv) de statistiques sur
+    * les différents types de GC d'Orange présents dans une ZANRO pour permettre
+    * le coloriage des routes
+    */
     private static void computePourcentagesGC(String codeNRO, String dossierNRO, File fichierGC, String dossierZANRO, String pourcentages){
         int n = 11;
         double[] res = new double[n];
@@ -185,6 +190,7 @@ public class Shapefiles {
             String[] donneesLigne;
             
             // on récupère le "buffer 5km" du département
+            System.out.println("Lecture : " + shpDpts+"/"+dpt+"/"+dpt+".shp");
             store = FileDataStoreFinder.getDataStore(new File(shpDpts+"/"+dpt+"/"+dpt+".shp"));
             reader = store.getFeatureReader();
             type = store.getSchema();
@@ -225,7 +231,7 @@ public class Shapefiles {
             
             // création du fichier de sortie
             PrintWriter csv = new PrintWriter(dirPC2+"/"+dirPC2.getName()+"_"+dpt+".csv");
-            csv.println("NRA;SR;PC;X;Y;Type;Lignes;Zone;Commune;Referentiel");
+            csv.println("Identifiant;NRA;SR;PC;X;Y;Type;Lignes;Zone;Commune;Referentiel");
             
             // parcours du fichier des pc
             BufferedReader pc = new BufferedReader(new FileReader(f));
@@ -236,13 +242,13 @@ public class Shapefiles {
             int pcProblemeBD =0;
             while ((ligne = pc.readLine()) != null) {
                 donneesLigne = ligne.split(";");
-                Coordinate coordinate = new Coordinate(Double.parseDouble(donneesLigne[4]), Double.parseDouble(donneesLigne[5]));
+                Coordinate coordinate = new Coordinate(Double.parseDouble(donneesLigne[5]), Double.parseDouble(donneesLigne[6]));
                 Point pt = gf.createPoint(coordinate);
                 
                 // on ne garde le point que si sa localisation est raisonnable
                 
                 if (shapeDpt.covers(pt)){
-                    codeINSEE = donneesLigne[3];
+                    codeINSEE = donneesLigne[4];
                     if (codeINSEE.length() == 4)
                         codeINSEE = "0".concat(codeINSEE);
                     String zone = communesToZones.get(codeINSEE);
@@ -274,8 +280,8 @@ public class Shapefiles {
                             }
                             break;    
                     }
-                    csv.println(donneesLigne[0]+";"+donneesLigne[1]+";"+donneesLigne[2]+";"+donneesLigne[4]+";"+donneesLigne[5]
-                            +";PC;"+donneesLigne[7]+";"+zone+";"+codeINSEE+";"+donneesLigne[6]);
+                    csv.println(donneesLigne[0]+";"+donneesLigne[1]+";"+donneesLigne[2]+";"+donneesLigne[3]+";"+donneesLigne[5]+";"+donneesLigne[6]
+                            +";PC;"+donneesLigne[8]+";"+zone+";"+codeINSEE+";"+donneesLigne[7]);
                 } else pcHorsDpt++;
                 
             }
@@ -400,13 +406,13 @@ public class Shapefiles {
         }     
     }
     
-    public static void createVoronoiPC(String cheminReseau, String origine, String adresseNRA, String adresseSR, String adressePC, String destination){
+    public static void createVoronoiPC(String cheminReseau, String origine, String adresseNRA, String adresseSR, String adressePC, String destination, boolean lireSR){
         long start = System.currentTimeMillis();
-        System.out.println("Création des polygones de Vooronoï des PC à partir du répertoire : "+cheminReseau+origine);
+        System.out.println("Création des polygones de Voronoï des PC à partir du répertoire : "+cheminReseau+origine);
         File dir = new File(cheminReseau+origine);
         for (File f : dir.listFiles()){
             String dpt = f.getName();
-            System.out.println("Déput de la création des voronoï de PC pour le département "+dpt);
+            System.out.println("Déput de la création des Voronoï de PC pour le département "+dpt);
             File dossier = new File(cheminReseau+destination+"/"+destination+"_"+dpt);
             if (!dossier.exists()){
                 dossier.mkdirs();
@@ -440,7 +446,7 @@ public class Shapefiles {
                     ReseauCuivre reseauCuivre = new ReseauCuivre(cheminReseau, dpt, -1, -1); // les deux derniers arguments ne sont pas utiles ici
                     reseauCuivre.loadNRA(cheminReseau+"/"+adresseNRA);
                     //reseauCuivre.loadSR(cheminReseau+"/"+adresseSR);
-                    reseauCuivre.loadPC(cheminReseau+"/"+adressePC, false, null);
+                    reseauCuivre.loadPC(cheminReseau+"/"+adressePC, false, null, lireSR);
                     Map<Coordinate, String[]> listeNoeuds = new HashMap<>();
                     System.out.println("Nombre de PC en entrée de Voronoï : "+reseauCuivre.getListePC().size());
                     for (PC pc : reseauCuivre.getListePC()){
@@ -458,7 +464,7 @@ public class Shapefiles {
                     // création des type, builder et collection pour les features ZAPC
                     SimpleFeatureTypeBuilder builderZAPC = new SimpleFeatureTypeBuilder();
                     builderZAPC.setName("ZAPC");
-                    builderZAPC.setCRS(type.getCoordinateReferenceSystem()); //Lambert 2 Etendu ou autre en outremer
+                    builderZAPC.setCRS(type.getCoordinateReferenceSystem()); //Il est préconisé d'utiliser le système de projection "Lambert-93" pour les départements de France métropolitaine
                     builderZAPC.add("the_geom", MultiPolygon.class);
                     builderZAPC.length(50).add("CodePC", String.class);
                     builderZAPC.length(20).add("CodeSR", String.class);
@@ -467,9 +473,9 @@ public class Shapefiles {
                     SimpleFeatureBuilder featureBuilderZAPC = new SimpleFeatureBuilder(formatShpZAPC);
                     List<SimpleFeature> listeZAPC = new ArrayList<>();
                     
-                    // calcul Voronoï
+                    // calcul des cellules de Voronoï
                     VoronoiDiagramBuilder vdb = new VoronoiDiagramBuilder();
-                    vdb.setClipEnvelope(geometry.getEnvelopeInternal()); // on envoie le plus petit rectangle contenant geometry (c'est plus simple ?)
+                    vdb.setClipEnvelope(geometry.getEnvelopeInternal()); // on envoie le plus petit rectangle contenant geometry 
                     vdb.setSites(listeNoeuds.keySet());
                     Geometry listePolygones = vdb.getDiagram(new GeometryFactory(new PrecisionModel()));
                     System.out.println("Nb Polygones " + listePolygones.getNumGeometries());
@@ -582,9 +588,9 @@ public class Shapefiles {
                             SimpleFeature feature = reader.next();
                             MultiPolygon geom = (MultiPolygon) feature.getDefaultGeometry();
                             
-                            String code = (String) feature.getAttribute(index);
+                            String code = (String) feature.getAttribute(index); 
                             if (!codeInFile) code = table.get((String) feature.getAttribute(index));
-                            if (code != null){ // en général, un NRA ne figure pas dans toutes les zones dont le cas arrive fréquemment         
+                            if (code != null){ // en général, un NRA ne figure pas dans toutes les zones don le cas arrive fréquemment         
                                 if (!geoToMerge.containsKey(code)){
                                     geoToMerge.put(code, new ArrayList<MultiPolygon>());
                                     attributes.put(code, feature.getAttributes()); // on supposera que tous les champs autres sont identiques
@@ -657,36 +663,41 @@ public class Shapefiles {
             while (iterator.hasNext()){
                 SimpleFeature feature = iterator.next();
                 MultiLineString routes = (MultiLineString) feature.getDefaultGeometry();
-                LineString arete = (LineString) routes.getGeometryN(0);
-                compteur++;
                 
-                List<double[]> intermediaires = new ArrayList<>();
-                for (Coordinate point : arete.getCoordinates()){
-                    double[] coord = {Parametres.arrondir(point.x,1), Parametres.arrondir(point.y,1)};
-                    intermediaires.add(coord);
+                for (int iGeo = 0; iGeo < routes.getNumGeometries(); iGeo++) {
+                    
+                    LineString arete = (LineString) routes.getGeometryN(iGeo);
+                    compteur++;
+                    
+                    List<double[]> intermediaires = new ArrayList<>();
+                    for (Coordinate point : arete.getCoordinates()){
+                        double[] coord = {Parametres.arrondir(point.x,1), Parametres.arrondir(point.y,1)};
+                        intermediaires.add(coord);
+                    }
+                    double[] coord1 = intermediaires.remove(0);
+                    double[] coord2 = intermediaires.remove(intermediaires.size()-1);
+
+                    int modePose = 11;
+                    double longueur = 0;
+                    String nature = "";
+
+                    switch(type){
+                        case "GC":
+                            try{modePose = Integer.parseInt((String) feature.getAttribute("MODE_POSE"));}
+                            catch(NumberFormatException e){System.out.println("Mode pose non ou mal indiqué dans un fichier GC");}
+                            longueur = Parametres.arrondir(arete.getLength(),1);
+                            break;
+                        case "routier":
+                            longueur = Parametres.arrondir(arete.getLength(),1);
+                            if (dpt.length() == 2)
+                                nature = (String) feature.getAttribute("NATURE");
+                            else nature = (String) feature.getAttribute("NATURE");
+                            break;
+                    }
+
+                    reseau.loadLineString(coord1, coord2, type, voisin, modePose, longueur, 1, nature, intermediaires);
                 }
-                double[] coord1 = intermediaires.remove(0);
-                double[] coord2 = intermediaires.remove(intermediaires.size()-1);
                 
-                int modePose = 11;
-                double longueur = 0;
-                String nature = "";
-                
-                switch(type){
-                    case "GC":
-                        try{modePose = Integer.parseInt((String) feature.getAttribute("MODE_POSE"));}
-                        catch(NumberFormatException e){System.out.println("Mode pose non ou mal indiqué dans un fichier GC");}
-                        longueur = Parametres.arrondir(arete.getLength(),1);
-                        break;
-                    case "routier":
-                        longueur = Parametres.arrondir(arete.getLength(),1);
-                        if (dpt.length() == 2)
-                            nature = (String) feature.getAttribute("Nature");
-                        else nature = (String) feature.getAttribute("NATURE");
-                        break;
-                }
-                
-                reseau.loadLineString(coord1, coord2, type, voisin, modePose, longueur, 1, nature, intermediaires);
             }
             iterator.close();
             System.out.println(compteur+" LineString parcourues");
@@ -696,13 +707,38 @@ public class Shapefiles {
         }
     }
     
-    public static void preparerGraphes(List<String> dptChoisis, Map<String,List<String>> dptsLimitrophes, String racine, String dossierContours, String dossierNRO, String dossierBLO, String options, boolean limitrophes, boolean gc, double toleranceNoeud, double seuilToleranceGC2){
+    /**
+     * Méthode construisant le Reseau de chaque ZANRO et permettant le calcul
+     * du chemin de raccordement de chaque PC/PBO au NRO
+     * 
+     * @param dptChoisis Liste des numéros des départements à traiter
+     * @param dptsLimitrophes Pour chaque département, liste des numéros des départements limitrophes
+     * @param racine Chemin vers le répertoire contentant les fichiers intermédiaires du modèle
+     * @param dossierContours Dossier contenant les contours des ZANRO
+     * @param dossierNRO Répertoire racine/NRO-XXkm contenant notamment les ListePC.csv
+     * @param dossierBLO Répertoire de sortie de preparerGraphes() (racine/BLO-...-XXkm)
+     * @param options
+     * @param limitrophes Booléen autorisant ou non le chargement de l'infrastructure des départements voisins
+     * @param gc Booléen autorisant ou non le chargement du GC
+     * @param routes Booléen autorisant ou non le chargement des routes
+     * @param tracerShpReseau Booléen autorisant ou non le tracé du shapefile représentant le réseau d'infrastructure mobilisable
+     * @param parametresReseau HashMap comportant les paramètres numériques pour le tracé du réseau :
+     *      - toleranceNoeud Valeur en m pour identifier les noeuds du réseau
+     *      - seuilToleranceGC2 Valeur en m pour privilégier le raccordement d'un PC au GC (avec construction d'une nouvelle arête)
+     *      - les facteurs de pondération des arêtes en fonction de leur nature / mode de pose
+     */
+    public static void preparerGraphes(List<String> dptChoisis, Map<String,List<String>> dptsLimitrophes, String racine, String dossierContours, String dossierNRO, String dossierBLO, String options, boolean limitrophes, boolean gc, boolean routes, boolean tracerShpReseau, HashMap<String, Double> parametresReseau){
         long start = System.currentTimeMillis();
-        System.out.println("Début du module topologique !");
+        System.out.println("Début de la construction du réseau physique - Shapefiles.preparerGraphes()");
         String line;
-        String[] types = {"routier"};
-        if (gc)
-            types = new String[]{"GC", "routier"};
+        
+        // Gestion des réseaux à utiliser
+        String[] types = new String[] {};
+        if (gc) types = new String[]{"GC"};
+        if (routes) types = new String[]{"routier"};
+        if (gc && routes) types = new String[]{"GC", "routier"};
+        
+        // Création du répertoire destination des tracés
         String destination = dossierBLO;
         for (String s : types){
             destination+="-"+s;
@@ -712,31 +748,68 @@ public class Shapefiles {
         dir.mkdir();
         
         try{
+            // Ecriture des paramètres...
             PrintWriter writer = new PrintWriter(dir+"/parametres.txt");
             writer.println("Paramètres utilisés pour produire les résultats du présent dossier "+dir.getName());
             writer.println();
             BufferedReader paramNRO = new BufferedReader(new FileReader(racine+dossierNRO+"/parametres.txt"));
             paramNRO.readLine();
             paramNRO.readLine();
+            // ... dont copie des paramètres du fichier de paramètres des NRO
             while ((line = paramNRO.readLine()) != null){
                 writer.println(line);
             }
             writer.println();
+            // ... dont paramètres propres au tracé du réseau
             writer.print("Utilisation du (des) réseau(x) du (des) département(s) limitrophe(s) : ");
             if (limitrophes) writer.println("OUI");
+            
             else writer.println("NON");
-            writer.print("Utilisation directe du tracé du réseau de génie civil d'Orange : ");
+            writer.print("Utilisation du tracé du réseau de génie civil d'Orange : ");
             if (gc) writer.println("OUI");
             else writer.println("NON");
-            writer.println("Longueur maximale pour identifier point du réseau cuivre et noeud de réseau physique : "+toleranceNoeud+" m");
-            writer.println("Longueur maxiamle de préférence pour le CG : "+seuilToleranceGC2+ " m");
+            
+            writer.print("Utilisation du tracé des routes : ");
+            if (routes) writer.println("OUI");
+            else writer.println("NON");
+            
+            writer.println("Longueur maximale pour identifier point du réseau cuivre et noeud de réseau physique : " + parametresReseau.get("toleranceNoeud") + " m");
+            writer.println("Longueur maxiamle de préférence pour le CG : " + parametresReseau.get("seuilToleranceGC2") + " m");
+            
+            writer.println("Pondération pour le GC en conduite existant : " + parametresReseau.get("facteurConduite"));
+            writer.println("Pondération pour le GC aérien existant : " + parametresReseau.get("facteurAerien"));
+            writer.println("Pondération pour le GC reconstruit : " + parametresReseau.get("facteurPleineTerre"));
+            
             writer.close();
-
-            PrintWriter aretesAjoutees = new PrintWriter(dir+"/aretes_ajoutees.csv");
-            aretesAjoutees.println("Departement;Zone;Nombre;Longueur moyenne");
+            
             for (String dpt : dptChoisis){ // ceux qui sont sélectionnés donc
-                double nbArAjoutees = 0, longArAjoutees = 0;
+                
                 System.out.println("Début pour le département "+dpt);
+                
+                // dossier département
+                File dossierDpt = new File(dir.getPath()+"/"+destination+"_"+dpt);
+                dossierDpt.mkdirs();
+                
+                // Fichier recensant les arêtes ajoutées pour assurer la connexité
+                // du réseau d'infrastructure des ZANRO (par dept * zone)
+                PrintWriter aretesAjoutees = new PrintWriter(dir.getPath()+"/"+destination+"_"+dpt+"/aretes_ajoutees.csv");
+                aretesAjoutees.println("Departement;Zone;"
+                        + "Nombre connecte routes;Longueur totale connecte routes;Longueur moyenne connecte routes;"
+                        + "Nombre connexité;Longueur totale connexité;Longueur moyenne connexité;"
+                        + "Nombre PC avec ajout arêtes;Longueur totale arêtes vers PC;Longueur moyenne arêtes vers PC;"
+                        + "Nombre de PC directement accrochés;Longueur totale pour l'accrochage des PC;Longueur moyenne d'accrochage");
+                
+                // stockage des longueurs ajoutées par la méthode Reseau.forceConnexite()
+                double nbArAjouteesCx = 0, longArAjouteesCx = 0;
+                // stockage des longueurs ajoutées par la méthode Reseau.connecteRoutes()
+                double nbArAjouteesCR = 0, longArAjouteesCR = 0;
+                
+                PrintWriter dureesCacul = new PrintWriter(dir.getPath()+"/"+destination+"_"+dpt+"/durees_calcul.csv");
+                dureesCacul.println("Departement;Zone;Lecture infra;forceConnexite;addPC;Total");
+                
+                // stockage des longueurs ajoutées par la méthode Reseau.addPC()
+                double nbArAjouteesPC = 0; double longArAjouteesPC = 0;
+                double longAccrochageReseau = 0; double nbPCAccroches = 0;
                           
                 List<String> dptVoisins = null;
                 if (limitrophes) dptVoisins = dptsLimitrophes.get(dpt);
@@ -748,19 +821,33 @@ public class Shapefiles {
                 }
                 for (String zone : zones){
                     System.out.println("Début pour la zone "+zone);
+                    
+                    long dureeLectureInfra = 0, dureeConnexite = 0, dureeAddPC = 0;
+                    long startDptZone = System.currentTimeMillis();
+                    
                     // dossier de destination
                     File dossier = new File(dir.getPath()+"/"+destination+"_"+dpt+"/"+destination+"_"+dpt+"_"+zone);
-                    dossier.mkdirs();  
+                    dossier.mkdirs();
+                    
+                    // sous-dossier dans lequel seront enregistrés les shapefiles du réseau
+                    File dossierShp = new File(dossier.getAbsolutePath() + "/graphe_shp");
+                    dossierShp.mkdirs();
+                    
+                    // Lecture du shapefile de ZANRO de la zone
                     FileDataStore store = FileDataStoreFinder.getDataStore(new File(dirZANRO.getPath()+"/"+dirZANRO.getName()+"_"+zone+"/"+dirZANRO.getName()+"_"+zone+".shp"));
                     FeatureReader<SimpleFeatureType, SimpleFeature> reader = store.getFeatureReader();
                     SimpleFeatureType schema = store.getSchema();
                     System.out.println("CRS du shapefile : "+schema.getCoordinateReferenceSystem().getName().getCode());
+                    
+                    // Parcours des ZANRO (les features du shapefile)
                     while (reader.hasNext()){
                         SimpleFeature feature = reader.next();
                         String nro = (String) feature.getAttribute("Code_ZANRO");
                         System.out.println("Début pour le NRO "+nro);
                         Geometry geo = (Geometry) feature.getDefaultGeometry();
-                        Reseau reseau = new Reseau(nro, zone, toleranceNoeud, seuilToleranceGC2);
+                        Reseau reseau = new Reseau(nro, zone, parametresReseau);
+                        // Chargement, pour chaque type d'infrastructure mobilisable, du shapefile correspondant
+                        long startLectureInfra = System.currentTimeMillis();
                         for (String type : types){
                             readShpReseau(dpt, type, geo, reseau, false);
                             if (limitrophes){
@@ -769,30 +856,83 @@ public class Shapefiles {
                                 }
                             }
                         }
-                        System.out.println("Fin de la première étape : tests");
+                        dureeLectureInfra += (System.currentTimeMillis() - startLectureInfra)/1000;
+                        System.out.println("Infrastructure mobilisable lue en " + dureeLectureInfra + " s");
+                        System.out.println("Fin du chargement des shapefiles décrivant les réseaux d'infrastructure mobilisables ; tests");
                         reseau.test();
-
+                        
+                        // Ouverture du fichier contenant les PC rattachés au NRO
                         BufferedReader rcNRO = new BufferedReader(new FileReader(racine+dossierNRO+"/"+dossierNRO+"_"+dpt+"/"+dossierNRO+"_"+dpt+"_"+zone+"/ListePC_"+nro+".csv"));
+                        // Lecture des coordonnées x,y du NRO dans le fichier ListePC_NRO (remarque : elles sont écrites en en-tête des colonnes 6 et 7)
                         line = rcNRO.readLine();
                         String[] fields = line.split(";");
                         reseau.setCentre(Double.parseDouble(fields[6]), Double.parseDouble(fields[7]));
-                        double[] res  = reseau.forceConnexite();
-                        nbArAjoutees+=res[0];
-                        longArAjoutees+=res[1];
-                        System.out.println("On rajoute les PC");
+                        
+                        // Si routes et GC ont été chargés, chaque extrémité
+                        // d'une portion de route est raccordée au GC le plus
+                        // proche de manière à la rendre utilisable de manière
+                        // plus fine
+                        System.out.println("Raccordement des routes au GC");
+                        double[] resConnecteRoutes = reseau.connecteRoutes();
+                        nbArAjouteesCR+=resConnecteRoutes[0];
+                        nbArAjouteesCR+=resConnecteRoutes[1];
+                        
+                        // Le réseau (constitué de toutes les infrastructures
+                        // mobilisables) est complété par des arcs les plus petits
+                        // possibles pour assurer sa connexité
+                        System.out.println("Connexité du réseau de la ZANRO");
+                        long startConnexite = System.currentTimeMillis();
+                        double[] resConnexite  = reseau.forceConnexite();
+                        dureeConnexite += (System.currentTimeMillis() - startConnexite)/1000;
+                        System.out.println("Réseau rendu connexe en " + dureeConnexite + " s");
+                        nbArAjouteesCx+=resConnexite[0];
+                        longArAjouteesCx+=resConnexite[1];
+                        
+                        System.out.println("Ajout des PC (et calcul du plus court chemin vers le NRO)");
+                        long startAddPC = System.currentTimeMillis();
                         while ((line = rcNRO.readLine()) != null){
                             fields = line.split(";");
-                            reseau.addPC(Double.parseDouble(fields[1]), Double.parseDouble(fields[2]), fields[4], Integer.parseInt(fields[3]), Integer.parseInt(fields[5]) == 1);
+                            double[] aretesAjouteesPC = reseau.addPC(Double.parseDouble(fields[1]), Double.parseDouble(fields[2]), fields[4], Integer.parseInt(fields[3]), Integer.parseInt(fields[5]) == 1);
+                            nbArAjouteesPC+=aretesAjouteesPC[0];
+                            if(aretesAjouteesPC[0] == 1) longArAjouteesPC += aretesAjouteesPC[1];
+                            else {
+                                longAccrochageReseau += aretesAjouteesPC[1];
+                                nbPCAccroches += 1;
+                            }
                         }
+                        dureeAddPC += (System.currentTimeMillis() - startAddPC) / 1000;
+                        System.out.println("PC ajoutés au réseau en " + dureeAddPC + " s");
+                        
+                        // Stockage des shapefiles
                         reseau.store(dossier);
+                        if (tracerShpReseau) reseau.printShapefiles(Main.getCRS(dpt), dossierShp);
+                        
+                        // écriture du fichier ModePose_[idNRO].csv)
                         computePourcentagesGC(nro, dossier.getPath(), new File(Main.getShapefileReseau("GC", dpt)), dirZANRO.getPath()+"/"+dirZANRO.getName()+"_"+zone, "ModesPose");
                     }
                     reader.close();
                     store.dispose();
-                    aretesAjoutees.println(dpt+";"+zone+";"+nbArAjoutees+";"+String.valueOf(longArAjoutees/nbArAjoutees).replace(".",","));
+                    aretesAjoutees.println(dpt+";"+zone+";"
+                            +String.valueOf(nbArAjouteesCR).replace(".",",")+";"
+                            +String.valueOf(longArAjouteesCR).replace(".",",")+";"
+                            +String.valueOf(longArAjouteesCR/nbArAjouteesCR).replace(".",",")+";"
+                            +String.valueOf(nbArAjouteesCx).replace(".",",")+";"
+                            +String.valueOf(longArAjouteesCx).replace(".",",")+";"
+                            +String.valueOf(longArAjouteesCx/nbArAjouteesCx).replace(".",",")+";"
+                            +String.valueOf(nbArAjouteesPC).replace(".",",")+";"
+                            +String.valueOf(longArAjouteesPC).replace(".",",")+";"
+                            +String.valueOf(longArAjouteesPC/nbArAjouteesPC).replace(".",",")+";"
+                            +String.valueOf(nbPCAccroches).replace(".",",")+";"
+                            +String.valueOf(longAccrochageReseau).replace(".",",")+";"
+                            +String.valueOf(longAccrochageReseau/nbPCAccroches).replace(".",",")
+                    );
+                    dureesCacul.println(dpt + ";" + zone + ";" + dureeLectureInfra  + ";" + dureeConnexite + ";" + dureeAddPC + ";" + (System.currentTimeMillis() - startDptZone)/1000);
+                    System.out.println("Calcul du réseau terminé pour la zone " + dpt + "-" + zone + " en " + (System.currentTimeMillis() - startDptZone)/1000 + " s");
                 }
+                aretesAjoutees.close();
+                dureesCacul.close();
             }
-            aretesAjoutees.close();
+            
         } catch (Exception e){
             e.printStackTrace();
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * Copyright (c) 2020, Autorité de régulation des communications électroniques, des postes et de la distribution de la presse
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -47,17 +47,23 @@ public class FenPrincipale extends JFrame {
     private final ModuleTopo topo;
     private final String[] demandeCible;
     private final String fichierImmeubles, fichierCoutsUnitaires, dossierCommunes, racineResultats;
+    private HashMap<String, Double> parametresReseau;
     
     public FenPrincipale(String adresseShapesGC, String adresseShapesRoutes,
             String[] fichiersCuivre,
             String adresseDptsLimitrophes, String adresseShapesDptsMetro, String[] shapesDOM, String nameShapeDpts,
             String[] fichiersZonage,
             String[] demandeCible, String fichierImmeubles,
-            String fichierCoutsUnitaires, String racineResultats){
+            String fichierCoutsUnitaires, String racineResultats, HashMap<String, Double> parametresReseau){
         
         //Formatage de la fenêtre
         initComponents();
         this.setTitle("Arcep - modèle de réseau BLOM pour la tarification du dégroupage");
+        
+        // Le menu de sélection du diamètre de câble minimal utilisé en horizontal
+        // est initialisé avec la valeur "12 FO" par défaut, conformément à la
+        // valeur retenue pour la version 1.2 d'avril 2020
+        jComboBox3.setSelectedItem("12 FO");
         
         // initailisation des adresses principales
         this.cheminReseau = Main.cheminReseau;
@@ -71,6 +77,8 @@ public class FenPrincipale extends JFrame {
         this.fichierCoutsUnitaires = fichierCoutsUnitaires;
         this.dossierCommunes = fichiersZonage[2];
         this.racineResultats = racineResultats;
+        
+        this.parametresReseau = parametresReseau;
 
         // initialisation du module topo
         File fichierSR = new File(fichiersCuivre[1]);
@@ -211,6 +219,16 @@ public class FenPrincipale extends JFrame {
         jCheckBox13 = new javax.swing.JCheckBox();
         jCheckBox11 = new javax.swing.JCheckBox();
         jCheckBox5 = new javax.swing.JCheckBox();
+        jLabel14 = new javax.swing.JLabel();
+        jLabel20 = new javax.swing.JLabel();
+        jLabel22 = new javax.swing.JLabel();
+        jLabel25 = new javax.swing.JLabel();
+        jLabel29 = new javax.swing.JLabel();
+        jLabel34 = new javax.swing.JLabel();
+        jSeparator3 = new javax.swing.JSeparator();
+        jSeparator4 = new javax.swing.JSeparator();
+        jCheckBox16 = new javax.swing.JCheckBox();
+        jCheckBox17 = new javax.swing.JCheckBox();
         jPanel2 = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         jLabel2 = new javax.swing.JLabel();
@@ -357,7 +375,7 @@ public class FenPrincipale extends JFrame {
                         .addComponent(jButton2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(jButton14, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
                         .addComponent(jLabel8, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                .addContainerGap(686, Short.MAX_VALUE))
+                .addContainerGap(463, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -453,11 +471,37 @@ public class FenPrincipale extends JFrame {
 
         jTextField24.setText("15");
 
-        jCheckBox13.setText("Utiliser le GC Orange directement");
+        jCheckBox13.setSelected(true);
+        jCheckBox13.setText("Utiliser le GC d'Orange");
 
         jCheckBox11.setText("<html>\n\nUtiliser les sous-répartiteurs lors de la lecture du réseau cuivre pour la création des ZANRA</br>\net le regroupement des NRA en NRO");
 
         jCheckBox5.setText("Supprimer les shapefiles préexistants pour la création des ZANRA");
+
+        jLabel14.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
+        jLabel14.setText("Module A : prétraitement");
+
+        jLabel20.setText("<html>Fichiers de sortie :\n<ul style=\"list-style-type:circle\">\n<li>Préparation shapes : DptsEtendus-5km</li>\n<li>Préparation des fichiers du réseau cuivre : LP, PC1, NRA, SR, PC2</li>\n<li>Traitement des réseaux de collecte : Collecte</li>\n<li>Création des shapefiles des ZANRA : VoronoiPC, ZANRA</li>\n</ul>\n");
+        jLabel20.setVerticalAlignment(javax.swing.SwingConstants.TOP);
+        jLabel20.setPreferredSize(new java.awt.Dimension(400, 90));
+
+        jLabel22.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
+        jLabel22.setText("Module B : regroupement");
+
+        jLabel25.setText("<html>\nFichiers de sortie :\n<ul style=\"list-style-type:circle\">\n<li>NRO-XXkm/[dept]/[zone]/ListePC</li>\n<li>ZANRO-XXkm/</li>\n</ul>");
+        jLabel25.setPreferredSize(new java.awt.Dimension(400, 14));
+
+        jLabel29.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
+        jLabel29.setText("Module C : réseau physique");
+
+        jLabel34.setText("<html>\nFichiers de sortie :\n<ul style=\"list-style-type:circle\">\n<li>BLO-[GC-][routier-]XXkm/[dept]/[zone]/Arêtes</li>\n<li>BLO-[GC-][routier-]XXkm/[dept]/[zone]/Noeuds</li>\n<li>BLO-[GC-][routier-]XXkm/[dept]/[zone]/ModesPose</li>\n</ul>");
+        jLabel34.setVerticalAlignment(javax.swing.SwingConstants.TOP);
+        jLabel34.setPreferredSize(new java.awt.Dimension(400, 14));
+
+        jCheckBox16.setSelected(true);
+        jCheckBox16.setText("Utiliser les routes");
+
+        jCheckBox17.setText("Tracé shapefile du graphe représentant le réseau");
 
         javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
         jPanel4.setLayout(jPanel4Layout);
@@ -465,86 +509,126 @@ public class FenPrincipale extends JFrame {
             jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel4Layout.createSequentialGroup()
                 .addGap(34, 34, 34)
-                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jCheckBox5)
-                    .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                        .addGroup(jPanel4Layout.createSequentialGroup()
-                            .addComponent(jLabel30)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                            .addComponent(jTextField20, javax.swing.GroupLayout.PREFERRED_SIZE, 24, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                            .addComponent(jLabel31))
-                        .addGroup(jPanel4Layout.createSequentialGroup()
-                            .addComponent(jLabel23, javax.swing.GroupLayout.PREFERRED_SIZE, 265, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                            .addComponent(jTextField16, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                            .addComponent(jLabel24))
-                        .addGroup(jPanel4Layout.createSequentialGroup()
-                            .addComponent(jCheckBox12, javax.swing.GroupLayout.PREFERRED_SIZE, 282, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addComponent(jCheckBox13))
-                        .addComponent(jButton12, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addGroup(jPanel4Layout.createSequentialGroup()
-                            .addComponent(jButton11, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(jButton15, javax.swing.GroupLayout.PREFERRED_SIZE, 198, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addComponent(jButton5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jButton8, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jButton13, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jCheckBox11, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
-                        .addGroup(jPanel4Layout.createSequentialGroup()
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                    .addComponent(jSeparator3, javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel4Layout.createSequentialGroup()
+                        .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addComponent(jLabel33, javax.swing.GroupLayout.PREFERRED_SIZE, 206, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addComponent(jLabel35))
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addComponent(jTextField24, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addComponent(jTextField22, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))))
-                .addGap(0, 879, Short.MAX_VALUE))
+                                .addComponent(jButton12, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addGroup(jPanel4Layout.createSequentialGroup()
+                                    .addComponent(jButton11, javax.swing.GroupLayout.DEFAULT_SIZE, 240, Short.MAX_VALUE)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 17, Short.MAX_VALUE)
+                                    .addComponent(jButton15, javax.swing.GroupLayout.PREFERRED_SIZE, 198, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addComponent(jButton8, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(jButton13, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(jCheckBox11, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
+                                .addComponent(jButton5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addGroup(jPanel4Layout.createSequentialGroup()
+                                    .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addGroup(jPanel4Layout.createSequentialGroup()
+                                            .addComponent(jLabel30)
+                                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                            .addComponent(jTextField20, javax.swing.GroupLayout.PREFERRED_SIZE, 24, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                            .addComponent(jLabel31))
+                                        .addGroup(jPanel4Layout.createSequentialGroup()
+                                            .addComponent(jLabel23, javax.swing.GroupLayout.PREFERRED_SIZE, 265, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                            .addComponent(jTextField16, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                            .addComponent(jLabel24))
+                                        .addGroup(jPanel4Layout.createSequentialGroup()
+                                            .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                .addComponent(jLabel33, javax.swing.GroupLayout.PREFERRED_SIZE, 206, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addComponent(jLabel35))
+                                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                            .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                .addComponent(jTextField24, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addComponent(jTextField22, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                                    .addGap(0, 0, Short.MAX_VALUE))
+                                .addGroup(jPanel4Layout.createSequentialGroup()
+                                    .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(jCheckBox16)
+                                        .addComponent(jCheckBox13))
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(jCheckBox12, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 282, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(jCheckBox17, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 282, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                            .addComponent(jCheckBox5))
+                        .addGap(50, 50, 50)
+                        .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel14)
+                            .addComponent(jLabel22)
+                            .addComponent(jLabel29)
+                            .addComponent(jLabel25, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jLabel20, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jLabel34, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                    .addComponent(jSeparator4))
+                .addGap(0, 218, Short.MAX_VALUE))
         );
         jPanel4Layout.setVerticalGroup(
             jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel4Layout.createSequentialGroup()
                 .addGap(27, 27, 27)
-                .addComponent(jButton12)
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jButton12)
+                    .addComponent(jLabel14))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addGroup(jPanel4Layout.createSequentialGroup()
+                        .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jButton11)
+                            .addComponent(jButton15))
+                        .addGap(8, 8, 8)
+                        .addComponent(jCheckBox11, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(jCheckBox5)
+                        .addGap(8, 8, 8)
+                        .addComponent(jButton13))
+                    .addComponent(jLabel20, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGap(40, 40, 40)
+                .addComponent(jSeparator4, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jButton11)
-                    .addComponent(jButton15))
-                .addGap(49, 49, 49)
-                .addComponent(jCheckBox11, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jCheckBox5)
-                .addGap(8, 8, 8)
-                .addComponent(jButton13)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel33)
-                    .addComponent(jTextField22, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel35)
-                    .addComponent(jTextField24, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jButton8)
-                .addGap(60, 60, 60)
+                    .addComponent(jTextField22, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel22))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel4Layout.createSequentialGroup()
+                        .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel35)
+                            .addComponent(jTextField24, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jButton8, javax.swing.GroupLayout.PREFERRED_SIZE, 24, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLabel25, javax.swing.GroupLayout.PREFERRED_SIZE, 62, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(40, 40, 40)
+                .addComponent(jSeparator3, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel23)
                     .addComponent(jTextField16, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel24))
+                    .addComponent(jLabel24)
+                    .addComponent(jLabel29))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel30)
-                    .addComponent(jTextField20, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel31))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jCheckBox12)
-                    .addComponent(jCheckBox13))
-                .addGap(14, 14, 14)
-                .addComponent(jButton5)
-                .addContainerGap(160, Short.MAX_VALUE))
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel4Layout.createSequentialGroup()
+                        .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel30)
+                            .addComponent(jTextField20, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jLabel31))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jCheckBox12)
+                            .addComponent(jCheckBox13))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jCheckBox16)
+                            .addComponent(jCheckBox17))
+                        .addGap(12, 12, 12)
+                        .addComponent(jButton5, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLabel34, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(130, Short.MAX_VALUE))
         );
 
         jTabbedPane1.addTab("Module topologique", jPanel4);
@@ -602,7 +686,7 @@ public class FenPrincipale extends JFrame {
 
         jLabel17.setText("Surcapacité en distribution");
 
-        jTextField11.setText("30%");
+        jTextField11.setText("15%");
 
         jLabel18.setText("Surcapacité en transport");
 
@@ -700,7 +784,7 @@ public class FenPrincipale extends JFrame {
 
         jLabel5.setText("Taille minimale des PM intérieurs :");
 
-        jComboBox3.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "24 FO", "12 FO", "6 FO", " " }));
+        jComboBox3.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "24 FO", "12 FO", "6 FO" }));
 
         jLabel49.setText("Taille min. des câbles en horizontal");
 
@@ -887,12 +971,12 @@ public class FenPrincipale extends JFrame {
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addGap(551, 551, 551)
                         .addComponent(jButton3, javax.swing.GroupLayout.PREFERRED_SIZE, 176, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addGap(0, 653, Short.MAX_VALUE))
+                .addGap(0, 430, Short.MAX_VALUE))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
-                .addGap(40, 40, 40)
+                .addGap(27, 27, 27)
                 .addComponent(jLabel2)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jLabel1)
@@ -1053,7 +1137,7 @@ public class FenPrincipale extends JFrame {
                 .addGroup(jPanel10Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                     .addComponent(jButton6, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jButton7, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 846, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 623, Short.MAX_VALUE)
                 .addComponent(jButton4)
                 .addContainerGap())
         );
@@ -1077,7 +1161,7 @@ public class FenPrincipale extends JFrame {
 
         jEditorPane1.setEditable(false);
         jEditorPane1.setContentType("text/html"); // NOI18N
-        jEditorPane1.setText("<html>\n  <head>\n\n  </head>\n  <body>\n <b>Modèle réseau d'accès BLOM et tarification du dégroupage v1.1 du 05/10/2017</b><br>\n<br>\nDirection économie, marchés et numérique<br>\nAutorité de régulation des communications électroniques et des postes<br>\nRépublique française<br>\n<br>\n<i>Utilisation par un tiers possible sous la licence BSD 2-clause \"Simplified\" License détaillée en tête de chaque fichier source</i><br>\n<br><br><br>\nCe modèle utilise les bibliothèques libres suivantes :<br>\n<br>\n•\tGeoTools<br>\nTraitement de fichiers et de données géographiques -  Licence publique générale limitée GNU<br>\nUtilisation de la version 17.1<br>\nhttp://geotools.org/<br>\n<br>\n•\tJGraphT<br>\nStructures et algorithmes de graphes – Licence publique générale limitée GNU ou Licence Publique Eclipse<br>\nhttp://www.jgrapht.org/<br>\n<br>\n•\tGuava<br>\nUtilitaires, classes génériques et autres fonctionnalités -  Licence Apache 2.0<br>\nhttps://github.com/google/guava/<br>\n<br>\n•\tKD-Tree<br>\nIndexation spatiale -  Licence publique générale limitée GNU<br>\nhttp://home.wlu.edu/~levys/software/kd/<br>\n<br>\n  </body>\n</html>\n\n");
+        jEditorPane1.setText("<html>   <head>    </head>   <body>  <b>Modèle réseau d'accès BLOM et tarification du dégroupage v1.2 du 10/04/2020</b><br> <br> Direction économie, marchés et numérique<br> Autorité de régulation des communications électroniques, des postes et de la distribution de la presse<br> République française<br> <br> <i>Utilisation par un tiers possible sous la licence BSD 2-clause \"Simplified\" License détaillée en tête de chaque fichier source</i><br> <br><br><br> Ce modèle utilise les bibliothèques libres suivantes :<br> <br> •\tGeoTools<br> Traitement de fichiers et de données géographiques -  Licence publique générale limitée GNU<br> Utilisation de la version 17.1<br> http://geotools.org/<br> <br> •\tJGraphT<br> Structures et algorithmes de graphes – Licence publique générale limitée GNU ou Licence Publique Eclipse<br> http://www.jgrapht.org/<br> <br> •\tGuava<br> Utilitaires, classes génériques et autres fonctionnalités -  Licence Apache 2.0<br> https://github.com/google/guava/<br> <br> •\tKD-Tree<br> Indexation spatiale -  Licence publique générale limitée GNU<br> http://home.wlu.edu/~levys/software/kd/<br> <br>   </body> </html>  ");
         jScrollPane3.setViewportView(jEditorPane1);
 
         jPanel5.add(jScrollPane3, java.awt.BorderLayout.CENTER);
@@ -1089,15 +1173,22 @@ public class FenPrincipale extends JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
+    /**
+    * Clic sur le bouton "Tout sélectionner" (onglet "Choix des départements")
+    */
     private void jButton1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton1MouseClicked
         jList1.setSelectionInterval(0, jList1.getModel().getSize() - 1);
 }//GEN-LAST:event_jButton1MouseClicked
-
+    /**
+    * Clic sur le bouton "Tout désélectionner" (onglet "Choix des départements")
+    */
     private void jButton2MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton2MouseClicked
         jList1.clearSelection();
     }//GEN-LAST:event_jButton2MouseClicked
 
-    
+    /**
+    * Clic sur le bouton "Ouvrir un scénario de coûts unitaires" (onglet "Coûts unitaires")
+    */
     private void jButton6MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton6MouseClicked
         //Charger des coûts unitaires
         int reponse = JOptionPane.showConfirmDialog(this, "Si les coûts unitaires n'ont pas été sauvegardés, ils seront perdus.\nContinuer ?", "Ouvrir des coûts unitaires", JOptionPane.YES_NO_OPTION);
@@ -1151,6 +1242,9 @@ public class FenPrincipale extends JFrame {
         }
     }//GEN-LAST:event_jButton6MouseClicked
 
+    /**
+    * Clic sur le bouton "Sauvegarder un scénario de coûts unitaires" (onglet "Coûts unitaires")
+    */
     private void jButton7MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton7MouseClicked
         final JFileChooser fc = new JFileChooser("Sources");
         FileFilter filtre = new FileNameExtensionFilter("Fichier CSV", "csv");
@@ -1200,6 +1294,9 @@ public class FenPrincipale extends JFrame {
         }
     }//GEN-LAST:event_jButton7MouseClicked
 
+    /**
+    * Clic sur le bouton "Sauvegarder les coûts unitaires par défaut" (onglet "Coûts unitaires")
+    */
     private void jButton4MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton4MouseClicked
 
         int reponse = JOptionPane.showConfirmDialog(this, "Les coûts unitaires par défault vont être remplacés, continuer ?", "Fichier existant", JOptionPane.YES_NO_OPTION);
@@ -1235,27 +1332,38 @@ public class FenPrincipale extends JFrame {
         }
     }//GEN-LAST:event_jButton4MouseClicked
 
+    /**
+    * Clic sur le bouton "Préparation shapes (départements, zonage)" (onglet "Module topologique")
+    */
     private void jButton12MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton12MouseClicked
         
         this.topo.pretraitementShapes(); 
         
     }//GEN-LAST:event_jButton12MouseClicked
 
+    /**
+    * Clic sur le bouton "Préparation des fichiers du réseau cuivre" (onglet "Module topologique")
+    */
     private void jButton11MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton11MouseClicked
-        
-        this.topo.pretraitementReseauCuivre();
+        boolean lireSR = jCheckBox11.isSelected();
+        this.topo.pretraitementReseauCuivre(lireSR);
         
     }//GEN-LAST:event_jButton11MouseClicked
 
+    /**
+    * Clic sur le bouton "Regroupement des NRA en NRO et création des shapefiles des ZANRO"
+    */
     private void jButton8MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton8MouseClicked
-        
         boolean lireSR = jCheckBox11.isSelected();
         List<String> listeDpts = splitAll(jList1.getSelectedValuesList(), " | ", 0);
         int nbLignesMinNRO = Integer.parseInt(jTextField22.getText());
         double distMaxNRONRA = Double.parseDouble(jTextField24.getText().replace(",", ".")); // en km
         this.topo.regrouperNRANRO(listeDpts, nbLignesMinNRO, distMaxNRONRA, lireSR);
     }//GEN-LAST:event_jButton8MouseClicked
-
+    
+    /**
+    * Clic sur le bouton "Module topo et sortie des fichiers intermédiaires « BLO »" (onglet "Module topologique")
+    */
     private void jButton5MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton5MouseClicked
         
         File dir = new File(cheminReseau);
@@ -1274,14 +1382,20 @@ public class FenPrincipale extends JFrame {
             }else{
                 System.out.println("Lancement du module topo avec le jeu de NRO "+jeuNRO);
                 double toleranceNoeud = Double.parseDouble(jTextField16.getText().replace(",", "."));
+                this.parametresReseau.put("toleranceNoeud", toleranceNoeud);
+                
                 double seuilToleranceGC2 = Double.parseDouble(jTextField20.getText().replace(",", "."));
+                this.parametresReseau.put("seuilToleranceGC2", seuilToleranceGC2);
+                
                 boolean limitrophes = jCheckBox12.isSelected();
                 boolean gc = jCheckBox13.isSelected();
+                boolean routes = jCheckBox16.isSelected();
+                boolean tracerShpReseau = jCheckBox17.isSelected();
                 List<String> dptChoisis = splitAll(jList1.getSelectedValuesList(), " | ", 0);
                 int reponse = JOptionPane.showConfirmDialog(this, "Préparation des graphes en tâche de fond - Cette opération va durer plusieurs heures\nContinuer ?", "Préparation des graphes", JOptionPane.YES_NO_OPTION);
                 if (reponse == JOptionPane.YES_OPTION) {
                     System.out.println("Valeur du champ gc : "+gc);
-                    this.topo.traceReseau(limitrophes, gc, jeuNRO, dptChoisis, toleranceNoeud, seuilToleranceGC2);
+                    this.topo.traceReseau(limitrophes, gc, routes, tracerShpReseau, jeuNRO, dptChoisis, this.parametresReseau);
                 } else {
                     JOptionPane.showMessageDialog(this, "Préparation des graphes annulée");
                 }
@@ -1289,6 +1403,9 @@ public class FenPrincipale extends JFrame {
         }
     }//GEN-LAST:event_jButton5MouseClicked
 
+    /**
+    * Clic sur le bouton "Création des shapefiles des ZANRA" (onglet "Module topologique")
+    */
     private void jButton13MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton13MouseClicked
         
         boolean lireSR = jCheckBox11.isSelected();
@@ -1297,6 +1414,9 @@ public class FenPrincipale extends JFrame {
         
     }//GEN-LAST:event_jButton13MouseClicked
 
+    /**
+    * Clic sur le bouton "Mettre les départements à jour" (onglet "Choix des départements")
+    */
     private void jButton14MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton14MouseClicked
 
         File dirGC = new File(adresseShapesGC);
@@ -1334,13 +1454,18 @@ public class FenPrincipale extends JFrame {
         
     }//GEN-LAST:event_jButton14MouseClicked
 
+    /**
+    * Clic sur le bouton "Pré-traitement réseau de collecte" (onglet "Module topologique")
+    */
     private void jButton15MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton15MouseClicked
         
         this.topo.pretraitementCollecte();
         
     }//GEN-LAST:event_jButton15MouseClicked
 
-    // quand on clique sur "lancement de la modélisation"
+    /**
+    * Clic sur le bouton "lancement de la modélisation" (onglet "Module topologique")
+    */
     private void jButton3MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton3MouseClicked
         
         File dir = new File(cheminReseau);
@@ -1458,6 +1583,8 @@ public class FenPrincipale extends JFrame {
     private javax.swing.JCheckBox jCheckBox13;
     private javax.swing.JCheckBox jCheckBox14;
     private javax.swing.JCheckBox jCheckBox15;
+    private javax.swing.JCheckBox jCheckBox16;
+    private javax.swing.JCheckBox jCheckBox17;
     private javax.swing.JCheckBox jCheckBox2;
     private javax.swing.JCheckBox jCheckBox3;
     private javax.swing.JCheckBox jCheckBox4;
@@ -1475,23 +1602,29 @@ public class FenPrincipale extends JFrame {
     private javax.swing.JLabel jLabel11;
     private javax.swing.JLabel jLabel12;
     private javax.swing.JLabel jLabel13;
+    private javax.swing.JLabel jLabel14;
     private javax.swing.JLabel jLabel15;
     private javax.swing.JLabel jLabel16;
     private javax.swing.JLabel jLabel17;
     private javax.swing.JLabel jLabel18;
     private javax.swing.JLabel jLabel19;
     private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel20;
     private javax.swing.JLabel jLabel21;
+    private javax.swing.JLabel jLabel22;
     private javax.swing.JLabel jLabel23;
     private javax.swing.JLabel jLabel24;
+    private javax.swing.JLabel jLabel25;
     private javax.swing.JLabel jLabel26;
     private javax.swing.JLabel jLabel27;
     private javax.swing.JLabel jLabel28;
+    private javax.swing.JLabel jLabel29;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel30;
     private javax.swing.JLabel jLabel31;
     private javax.swing.JLabel jLabel32;
     private javax.swing.JLabel jLabel33;
+    private javax.swing.JLabel jLabel34;
     private javax.swing.JLabel jLabel35;
     private javax.swing.JLabel jLabel36;
     private javax.swing.JLabel jLabel37;
@@ -1523,6 +1656,8 @@ public class FenPrincipale extends JFrame {
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScrollPane3;
+    private javax.swing.JSeparator jSeparator3;
+    private javax.swing.JSeparator jSeparator4;
     private javax.swing.JTabbedPane jTabbedPane1;
     private javax.swing.JTable jTable1;
     private javax.swing.JTextField jTextField1;

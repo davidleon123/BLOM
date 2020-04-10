@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * Copyright (c) 2020, Autorité de régulation des communications électroniques, des postes et de la distribution de la presse
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,7 @@ import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import java.util.Random;
 
 public class Deploiement implements Runnable{
 
@@ -150,9 +151,18 @@ public class Deploiement implements Runnable{
                 //date = new Date();
                 String dptResultats = dpt + "_" + parametres.terminaison; // utilisé dans les noms de fichiers aussi
                 String cheminResultats = racineResultats+ "/Resultats_"+dpt;
-                dir = new File(cheminResultats);
-                dir.mkdirs();
-                 
+                if (parametres.ficUnitesOeuvre ||
+                        parametres.ficCouts ||
+                        parametres.ficLongueurs ||
+                        parametres.ficLineaires ||
+                        parametres.ficNRO ||
+                        parametres.ficPM ||
+                        parametres.ficPBO ||
+                        fichiersTest) {
+                    dir = new File(cheminResultats);
+                    dir.mkdirs();
+                }
+                
                 fen.afficher("Lecture du fichier immeubles");
                 ///////////////////////////////////////////////////////////////////////////
                 /// Lecture des immeubles du département (pour les coûts de colonne montante)
@@ -187,7 +197,7 @@ public class Deploiement implements Runnable{
                 
                 /// A. Shapefiles
                 
-                CoordinateReferenceSystem crs = Main.getCRS(dpt, true);
+                CoordinateReferenceSystem crs = Main.getCRS(dpt);
                 GeometryFactory gf = JTSFactoryFinder.getGeometryFactory(new Hints(Hints.JTS_SRID, Integer.parseInt(crs.getIdentifiers().iterator().next().getCode())));
                 
                 SimpleFeatureType typeShpNRO = BLO.getNROFeatureType(crs);
@@ -327,7 +337,7 @@ public class Deploiement implements Runnable{
                         }
                         System.out.println("Demande totale construite dans le département pour la zone "+zone+" :"+demandeConstruite);
 
-                        this.adapteDemande(noeudsDemande, demandeConstruite, Math.max(demandeDpt.get(zone), demandeConstruite), zone, seuilPMint);
+                        this.adapteDemande(noeudsDemande, demandeConstruite, demandeDpt.get(zone), zone, seuilPMint, Main.PRNG);
                         int newDemande = 0;
                         for (Noeud n : noeudsDemande){
                             newDemande += n.demandeLocaleTotale();
@@ -344,8 +354,9 @@ public class Deploiement implements Runnable{
                             BLO blo = new BLO(codeNRO, Reseau.readCentre(dossier, codeNRO), noeudsNRO.get(codeNRO), Reseau.readAretes(dossier,codeNRO), zone, parametres);
                             blo.simplification(); // on fusionne les arêtes qui peuvent l'être
                             blo.posePM();
+                            blo.calculerDemandeAretes(); // arête par arête, la demande étant utile pour le calcul du mode pose
                             blo.setModesPose(coloriage, dossier);
-                            blo.calculerUOAretes(); // arête par arête
+                            blo.calculerAutresUOAretes(); // arête par arête
                             blo.calculResultatsParPM(); // là on agrège en parcourant l'arbre encore une fois
                             
                             if (parametres.ficLineaires) featuresAretes.addAll(blo.getAretes(gf, featureBuilderAretes));
@@ -488,7 +499,7 @@ public class Deploiement implements Runnable{
         else return Math.round(100*nbDptTraites/listeDpts.size());
     }
     
-    private void adapteDemande(List<Noeud> noeudsDemande, int demandeConstruite, int demandeVoulue, String zone, int seuilPMint){
+    private void adapteDemande(List<Noeud> noeudsDemande, int demandeConstruite, int demandeVoulue, String zone, int seuilPMint, Random PRNG){
         System.out.println("Appel de adapteDemande");
         System.out.println("Zone : "+zone);
         System.out.println("Demande existante à partir du fichier des LP : "+demandeConstruite);
@@ -496,9 +507,9 @@ public class Deploiement implements Runnable{
         int demande = demandeConstruite;
         int nbNoeuds = noeudsDemande.size();
         while (demande > demandeVoulue & nbNoeuds > 0){
-            int i = (int) Math.floor(Math.random()*nbNoeuds);
+            int i = PRNG.nextInt(nbNoeuds); // renvoie un nombre aléatoire de façon équiprobable entre 0 et nbNoeuds-1
             Noeud n = noeudsDemande.get(i);
-            if (n.decreaseDemande(zone)){
+            if (n.decreaseDemande(zone, PRNG)){
                 noeudsDemande.remove(n);
                 nbNoeuds--;
             }
@@ -506,9 +517,9 @@ public class Deploiement implements Runnable{
         }
         if (nbNoeuds > 0){
             while (demande < demandeVoulue){
-                int i = (int) Math.floor(Math.random()*nbNoeuds);
+                int i = PRNG.nextInt(nbNoeuds); // renvoie un nombre aléatoire de façon équiprobable entre 0 et nbNoeuds-1
                 Noeud n = noeudsDemande.get(i);
-                n.increaseDemande(zone, seuilPMint);
+                n.increaseDemande(zone, seuilPMint, PRNG);
                 demande++;
             }
         }

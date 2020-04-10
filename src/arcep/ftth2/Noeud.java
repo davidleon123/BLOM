@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * Copyright (c) 2020, Autorité de régulation des communications électroniques, des postes et de la distribution de la presse
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,24 +26,25 @@
 package arcep.ftth2;
 
 import java.util.List;
+import java.util.Random;
 
 public class Noeud extends NoeudAGarder {
         
     // numéro en tant que PM:
     int numPM;
     
-    // en tant que PMint
+    // numéro en tant que PMint
     boolean isPMint;
     
-    // champs techniques pour l'algo de placement des PM ext "mediane"
+    // champs techniques pour l'algorithme de placement des PM ext avec la méthode de la "mediane"
     int lignesInfSeuil;
     int lignesSupSeuil;
     List<Double> distri;
     
-    // champ technique pour l'algo de placement des PM ext "moyenne"
+    // champs techniques pour l'algorithme de placement des PM ext avec la méthode de la "moyenne"
     double longueurMoyenne;
     
-    // en tant que PM ext 
+    // taille PM en tant que PM ext 
     private int taillePM_ZMD = 0;
     private int taillePM_ZTD_BD = 0;
     private int taillePM_ZTD_HD = 0;
@@ -70,9 +71,9 @@ public class Noeud extends NoeudAGarder {
         }
     }
 
-    public boolean decreaseDemande(String zone){
+    public boolean decreaseDemande(String zone, Random PRNG){ // fonction permettant de diminuer la demande au niveau d'une zone 
         if (zone.equals("ZTD")){
-            int i = (int) Math.ceil(Math.random()*this.demandeLocaleTotale());
+            int i = PRNG.nextInt(this.demandeLocaleTotale()) + 1; // renvoie un entier avec un tirage uniformément distribué entre 1 et demandeLocaleTotale
             if (i<=this.getDemandeLocale("ZTD_BD")){
                 this.modifieDemande("ZTD_BD", -1);
             } else {
@@ -85,9 +86,10 @@ public class Noeud extends NoeudAGarder {
         return this.demandeLocaleTotale() == 0;
     }
 
-    public void increaseDemande(String zone, int seuilPMint){
+    public void increaseDemande(String zone, int seuilPMint, Random PRNG){ // fonction permettant d'augmenter la demande au niveau d'une zone 
         if (zone.equals("ZTD")){
-            int i = (int) Math.ceil(Math.random()*demandeLocaleTotale());
+            //int i = (int) Math.ceil(Math.random()*demandeLocaleTotale());
+            int i = PRNG.nextInt(this.demandeLocaleTotale()) + 1; // pour être conforme au "ceil" avant
             if (i<=this.getDemandeLocale("ZTD_BD")){
                 this.modifieDemande("ZTD_BD", 1);
             } else {
@@ -119,7 +121,7 @@ public class Noeud extends NoeudAGarder {
         else return 0;
     }
 
-    // méthodes "de PM"
+    // méthodes liées au PM
     
     public boolean isPMExt(String zone) {
         return taillePM(zone) > 0;

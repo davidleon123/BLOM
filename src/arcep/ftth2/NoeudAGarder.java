@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * Copyright (c) 2020, Autorité de régulation des communications électroniques, des postes et de la distribution de la presse
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,10 +25,22 @@
  */
 package arcep.ftth2;
 
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.Point;
 import java.io.PrintWriter;
 import java.util.*;
+import org.geotools.feature.simple.SimpleFeatureBuilder;
+import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.jgrapht.GraphPath;
+import org.opengis.feature.simple.SimpleFeature;
+import org.opengis.feature.simple.SimpleFeatureType;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
+/*
+* Un NoeudAGarder est un noeud extrémité d'une arête dans le graphe représentant
+* le Reseau desservi par un NRO
+*/
 public class NoeudAGarder extends Node {
     
     boolean pathConnu;
@@ -119,6 +131,38 @@ public class NoeudAGarder extends Node {
 
     public void modifieDemande(String zone, int n){
         this.demandeParZone.put(zone, this.demandeParZone.get(zone)+n);
+    }
+    
+    /**
+     * Fonction permettant d'initialiser l'objet FeatureType pour le tracé
+     * des shapefiles des NoeudAGarder
+     * 
+     * @param crs (CoordinateReferenceSystem) Système de coordonnées de référence pour l'écriture du shapefile
+     * @return SimpleFeatureType spécifiant les attributs pour le tracé du NoeudAGarder
+     */
+    public static SimpleFeatureType getFeatureType(CoordinateReferenceSystem crs){
+        SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
+        builder.setName("Vertex");
+        builder.setCRS(crs);
+        builder.add("the_geom", Point.class);
+        builder.add("ID", Integer.class);
+        builder.length(13).add("ID_RSO", String.class);
+        return builder.buildFeatureType();
+    }
+    
+    /**
+     * Fonction permettant de créer la Feature correspondant au tracé d'un NoeudAGarder
+     * 
+     * @param idReseau (String) Nom du NRO / zone
+     * @param gf
+     * @param featureBuilder SimpleFeatureBuilder permettant le tracé de la SimpleFeature
+     * @return SimpleFeature représentant le tracé du NoeudAGarder
+     */
+    public SimpleFeature getFeature(String idReseau, GeometryFactory gf, SimpleFeatureBuilder featureBuilder){
+        featureBuilder.add(gf.createPoint(new Coordinate(this.coord[0], this.coord[1])));
+        featureBuilder.add(this.id);
+        featureBuilder.add(idReseau);
+        return featureBuilder.buildFeature(null);
     }
     
 }

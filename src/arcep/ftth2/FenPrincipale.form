@@ -28,7 +28,7 @@
     <AuxValue name="FormSettings_listenerGenerationStyle" type="java.lang.Integer" value="0"/>
     <AuxValue name="FormSettings_variablesLocal" type="java.lang.Boolean" value="false"/>
     <AuxValue name="FormSettings_variablesModifier" type="java.lang.Integer" value="2"/>
-    <AuxValue name="designerSize" type="java.awt.Dimension" value="-84,-19,0,5,115,114,0,18,106,97,118,97,46,97,119,116,46,68,105,109,101,110,115,105,111,110,65,-114,-39,-41,-84,95,68,20,2,0,2,73,0,6,104,101,105,103,104,116,73,0,5,119,105,100,116,104,120,112,0,0,2,-85,0,0,5,105"/>
+    <AuxValue name="designerSize" type="java.awt.Dimension" value="-84,-19,0,5,115,114,0,18,106,97,118,97,46,97,119,116,46,68,105,109,101,110,115,105,111,110,65,-114,-39,-41,-84,95,68,20,2,0,2,73,0,6,104,101,105,103,104,116,73,0,5,119,105,100,116,104,120,112,0,0,2,-85,0,0,4,-118"/>
   </AuxValues>
 
   <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout"/>
@@ -79,7 +79,7 @@
                               <Component id="jLabel8" alignment="0" max="32767" attributes="0"/>
                           </Group>
                       </Group>
-                      <EmptySpace pref="686" max="32767" attributes="0"/>
+                      <EmptySpace pref="463" max="32767" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -207,52 +207,78 @@
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="0" attributes="0">
                       <EmptySpace min="-2" pref="34" max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="jCheckBox5" min="-2" max="-2" attributes="0"/>
-                          <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                              <Group type="102" attributes="0">
-                                  <Component id="jLabel30" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                                  <Component id="jTextField20" min="-2" pref="24" max="-2" attributes="0"/>
-                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                                  <Component id="jLabel31" min="-2" max="-2" attributes="0"/>
-                              </Group>
-                              <Group type="102" attributes="0">
-                                  <Component id="jLabel23" min="-2" pref="265" max="-2" attributes="0"/>
-                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                                  <Component id="jTextField16" min="-2" pref="23" max="-2" attributes="0"/>
-                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                                  <Component id="jLabel24" min="-2" max="-2" attributes="0"/>
-                              </Group>
-                              <Group type="102" attributes="0">
-                                  <Component id="jCheckBox12" min="-2" pref="282" max="-2" attributes="0"/>
-                                  <EmptySpace max="-2" attributes="0"/>
-                                  <Component id="jCheckBox13" min="-2" max="-2" attributes="0"/>
-                              </Group>
-                              <Component id="jButton12" alignment="0" max="32767" attributes="0"/>
-                              <Group type="102" alignment="0" attributes="0">
-                                  <Component id="jButton11" max="32767" attributes="0"/>
-                                  <EmptySpace max="32767" attributes="0"/>
-                                  <Component id="jButton15" min="-2" pref="198" max="-2" attributes="0"/>
-                              </Group>
-                              <Component id="jButton5" alignment="0" max="32767" attributes="1"/>
-                              <Component id="jButton8" max="32767" attributes="0"/>
-                              <Component id="jButton13" max="32767" attributes="0"/>
-                              <Component id="jCheckBox11" alignment="0" pref="0" max="32767" attributes="0"/>
-                              <Group type="102" alignment="0" attributes="0">
-                                  <Group type="103" groupAlignment="0" attributes="0">
-                                      <Component id="jLabel33" alignment="0" min="-2" pref="206" max="-2" attributes="0"/>
-                                      <Component id="jLabel35" alignment="0" min="-2" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="1" max="-2" attributes="0">
+                          <Component id="jSeparator3" alignment="0" max="32767" attributes="0"/>
+                          <Group type="102" attributes="0">
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Group type="103" alignment="0" groupAlignment="0" attributes="0">
+                                      <Component id="jButton12" alignment="0" max="32767" attributes="0"/>
+                                      <Group type="102" alignment="0" attributes="0">
+                                          <Component id="jButton11" pref="240" max="32767" attributes="0"/>
+                                          <EmptySpace pref="17" max="32767" attributes="0"/>
+                                          <Component id="jButton15" min="-2" pref="198" max="-2" attributes="0"/>
+                                      </Group>
+                                      <Component id="jButton8" max="32767" attributes="0"/>
+                                      <Component id="jButton13" max="32767" attributes="0"/>
+                                      <Component id="jCheckBox11" alignment="0" pref="0" max="32767" attributes="0"/>
+                                      <Component id="jButton5" max="32767" attributes="1"/>
+                                      <Group type="102" attributes="0">
+                                          <Group type="103" groupAlignment="0" attributes="0">
+                                              <Group type="102" attributes="0">
+                                                  <Component id="jLabel30" min="-2" max="-2" attributes="0"/>
+                                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                                                  <Component id="jTextField20" min="-2" pref="24" max="-2" attributes="0"/>
+                                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                                                  <Component id="jLabel31" min="-2" max="-2" attributes="0"/>
+                                              </Group>
+                                              <Group type="102" attributes="0">
+                                                  <Component id="jLabel23" min="-2" pref="265" max="-2" attributes="0"/>
+                                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                                                  <Component id="jTextField16" min="-2" pref="23" max="-2" attributes="0"/>
+                                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                                                  <Component id="jLabel24" min="-2" max="-2" attributes="0"/>
+                                              </Group>
+                                              <Group type="102" alignment="0" attributes="0">
+                                                  <Group type="103" groupAlignment="0" attributes="0">
+                                                      <Component id="jLabel33" alignment="0" min="-2" pref="206" max="-2" attributes="0"/>
+                                                      <Component id="jLabel35" alignment="0" min="-2" max="-2" attributes="0"/>
+                                                  </Group>
+                                                  <EmptySpace max="-2" attributes="0"/>
+                                                  <Group type="103" groupAlignment="0" attributes="0">
+                                                      <Component id="jTextField24" min="-2" pref="30" max="-2" attributes="0"/>
+                                                      <Component id="jTextField22" min="-2" max="-2" attributes="0"/>
+                                                  </Group>
+                                              </Group>
+                                          </Group>
+                                          <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
+                                      </Group>
+                                      <Group type="102" attributes="0">
+                                          <Group type="103" groupAlignment="0" attributes="0">
+                                              <Component id="jCheckBox16" min="-2" max="-2" attributes="0"/>
+                                              <Component id="jCheckBox13" min="-2" max="-2" attributes="0"/>
+                                          </Group>
+                                          <EmptySpace max="32767" attributes="0"/>
+                                          <Group type="103" groupAlignment="0" attributes="0">
+                                              <Component id="jCheckBox12" alignment="1" min="-2" pref="282" max="-2" attributes="0"/>
+                                              <Component id="jCheckBox17" alignment="1" min="-2" pref="282" max="-2" attributes="0"/>
+                                          </Group>
+                                      </Group>
                                   </Group>
-                                  <EmptySpace max="-2" attributes="0"/>
-                                  <Group type="103" groupAlignment="0" attributes="0">
-                                      <Component id="jTextField24" min="-2" pref="30" max="-2" attributes="0"/>
-                                      <Component id="jTextField22" min="-2" max="-2" attributes="0"/>
-                                  </Group>
+                                  <Component id="jCheckBox5" alignment="0" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <EmptySpace min="-2" pref="50" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                                  <Component id="jLabel14" min="-2" max="-2" attributes="0"/>
+                                  <Component id="jLabel22" min="-2" max="-2" attributes="0"/>
+                                  <Component id="jLabel29" min="-2" max="-2" attributes="0"/>
+                                  <Component id="jLabel25" alignment="0" max="32767" attributes="0"/>
+                                  <Component id="jLabel20" alignment="0" max="32767" attributes="0"/>
+                                  <Component id="jLabel34" alignment="0" max="32767" attributes="0"/>
                               </Group>
                           </Group>
+                          <Component id="jSeparator4" max="32767" attributes="0"/>
                       </Group>
-                      <EmptySpace min="0" pref="879" max="32767" attributes="0"/>
+                      <EmptySpace min="0" pref="218" max="32767" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -260,50 +286,79 @@
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="0" attributes="0">
                       <EmptySpace min="-2" pref="27" max="-2" attributes="0"/>
-                      <Component id="jButton12" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="3" attributes="0">
-                          <Component id="jButton11" alignment="3" min="-2" max="-2" attributes="0"/>
-                          <Component id="jButton15" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="jButton12" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="jLabel14" alignment="3" min="-2" max="-2" attributes="0"/>
                       </Group>
-                      <EmptySpace min="-2" pref="49" max="-2" attributes="0"/>
-                      <Component id="jCheckBox11" min="-2" pref="39" max="-2" attributes="0"/>
-                      <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                      <Component id="jCheckBox5" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace min="-2" pref="8" max="-2" attributes="0"/>
-                      <Component id="jButton13" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                          <Group type="102" attributes="0">
+                              <Group type="103" groupAlignment="3" attributes="0">
+                                  <Component id="jButton11" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  <Component id="jButton15" alignment="3" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <EmptySpace min="-2" pref="8" max="-2" attributes="0"/>
+                              <Component id="jCheckBox11" min="-2" pref="39" max="-2" attributes="0"/>
+                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                              <Component id="jCheckBox5" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace min="-2" pref="8" max="-2" attributes="0"/>
+                              <Component id="jButton13" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                          <Component id="jLabel20" max="32767" attributes="0"/>
+                      </Group>
+                      <EmptySpace min="-2" pref="40" max="-2" attributes="0"/>
+                      <Component id="jSeparator4" min="-2" pref="10" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="3" attributes="0">
                           <Component id="jLabel33" alignment="3" min="-2" max="-2" attributes="0"/>
                           <Component id="jTextField22" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="jLabel22" alignment="3" min="-2" max="-2" attributes="0"/>
                       </Group>
-                      <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="3" attributes="0">
-                          <Component id="jLabel35" alignment="3" min="-2" max="-2" attributes="0"/>
-                          <Component id="jTextField24" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" attributes="0">
+                              <Group type="103" groupAlignment="3" attributes="0">
+                                  <Component id="jLabel35" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  <Component id="jTextField24" alignment="3" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Component id="jButton8" min="-2" pref="24" max="-2" attributes="0"/>
+                          </Group>
+                          <Component id="jLabel25" min="-2" pref="62" max="-2" attributes="0"/>
                       </Group>
-                      <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                      <Component id="jButton8" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace min="-2" pref="60" max="-2" attributes="0"/>
+                      <EmptySpace min="-2" pref="40" max="-2" attributes="0"/>
+                      <Component id="jSeparator3" min="-2" pref="10" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="3" attributes="0">
                           <Component id="jLabel23" alignment="3" min="-2" max="-2" attributes="0"/>
                           <Component id="jTextField16" alignment="3" min="-2" max="-2" attributes="0"/>
                           <Component id="jLabel24" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="jLabel29" alignment="3" min="-2" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="3" attributes="0">
-                          <Component id="jLabel30" alignment="3" min="-2" max="-2" attributes="0"/>
-                          <Component id="jTextField20" alignment="3" min="-2" max="-2" attributes="0"/>
-                          <Component id="jLabel31" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" attributes="0">
+                              <Group type="103" groupAlignment="3" attributes="0">
+                                  <Component id="jLabel30" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  <Component id="jTextField20" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  <Component id="jLabel31" alignment="3" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="3" attributes="0">
+                                  <Component id="jCheckBox12" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  <Component id="jCheckBox13" alignment="3" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="3" attributes="0">
+                                  <Component id="jCheckBox16" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  <Component id="jCheckBox17" alignment="3" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <EmptySpace min="-2" pref="12" max="-2" attributes="0"/>
+                              <Component id="jButton5" min="-2" pref="23" max="-2" attributes="0"/>
+                          </Group>
+                          <Component id="jLabel34" min="-2" pref="91" max="-2" attributes="0"/>
                       </Group>
-                      <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="3" attributes="0">
-                          <Component id="jCheckBox12" alignment="3" min="-2" max="-2" attributes="0"/>
-                          <Component id="jCheckBox13" alignment="3" min="-2" max="-2" attributes="0"/>
-                      </Group>
-                      <EmptySpace min="-2" pref="14" max="-2" attributes="0"/>
-                      <Component id="jButton5" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace pref="160" max="32767" attributes="0"/>
+                      <EmptySpace pref="130" max="32767" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -415,7 +470,8 @@
             </Component>
             <Component class="javax.swing.JCheckBox" name="jCheckBox13">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Utiliser le GC Orange directement"/>
+                <Property name="selected" type="boolean" value="true"/>
+                <Property name="text" type="java.lang.String" value="Utiliser le GC d&apos;Orange"/>
               </Properties>
             </Component>
             <Component class="javax.swing.JCheckBox" name="jCheckBox11">
@@ -426,6 +482,71 @@
             <Component class="javax.swing.JCheckBox" name="jCheckBox5">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Supprimer les shapefiles pr&#xe9;existants pour la cr&#xe9;ation des ZANRA"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JLabel" name="jLabel14">
+              <Properties>
+                <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+                  <Font name="Tahoma" size="14" style="1"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Module A : pr&#xe9;traitement"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JLabel" name="jLabel20">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="&lt;html&gt;Fichiers de sortie :&#xa;&lt;ul style=&quot;list-style-type:circle&quot;&gt;&#xa;&lt;li&gt;Pr&#xe9;paration shapes : DptsEtendus-5km&lt;/li&gt;&#xa;&lt;li&gt;Pr&#xe9;paration des fichiers du r&#xe9;seau cuivre : LP, PC1, NRA, SR, PC2&lt;/li&gt;&#xa;&lt;li&gt;Traitement des r&#xe9;seaux de collecte : Collecte&lt;/li&gt;&#xa;&lt;li&gt;Cr&#xe9;ation des shapefiles des ZANRA : VoronoiPC, ZANRA&lt;/li&gt;&#xa;&lt;/ul&gt;&#xa;"/>
+                <Property name="verticalAlignment" type="int" value="1"/>
+                <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                  <Dimension value="[400, 90]"/>
+                </Property>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JLabel" name="jLabel22">
+              <Properties>
+                <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+                  <Font name="Tahoma" size="14" style="1"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Module B : regroupement"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JLabel" name="jLabel25">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="&lt;html&gt;&#xa;Fichiers de sortie :&#xa;&lt;ul style=&quot;list-style-type:circle&quot;&gt;&#xa;&lt;li&gt;NRO-XXkm/[dept]/[zone]/ListePC&lt;/li&gt;&#xa;&lt;li&gt;ZANRO-XXkm/&lt;/li&gt;&#xa;&lt;/ul&gt;"/>
+                <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                  <Dimension value="[400, 14]"/>
+                </Property>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JLabel" name="jLabel29">
+              <Properties>
+                <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+                  <Font name="Tahoma" size="14" style="1"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Module C : r&#xe9;seau physique"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JLabel" name="jLabel34">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="&lt;html&gt;&#xa;Fichiers de sortie :&#xa;&lt;ul style=&quot;list-style-type:circle&quot;&gt;&#xa;&lt;li&gt;BLO-[GC-][routier-]XXkm/[dept]/[zone]/Ar&#xea;tes&lt;/li&gt;&#xa;&lt;li&gt;BLO-[GC-][routier-]XXkm/[dept]/[zone]/Noeuds&lt;/li&gt;&#xa;&lt;li&gt;BLO-[GC-][routier-]XXkm/[dept]/[zone]/ModesPose&lt;/li&gt;&#xa;&lt;/ul&gt;"/>
+                <Property name="verticalAlignment" type="int" value="1"/>
+                <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                  <Dimension value="[400, 14]"/>
+                </Property>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JSeparator" name="jSeparator3">
+            </Component>
+            <Component class="javax.swing.JSeparator" name="jSeparator4">
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="jCheckBox16">
+              <Properties>
+                <Property name="selected" type="boolean" value="true"/>
+                <Property name="text" type="java.lang.String" value="Utiliser les routes"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="jCheckBox17">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Trac&#xe9; shapefile du graphe repr&#xe9;sentant le r&#xe9;seau"/>
               </Properties>
             </Component>
           </SubComponents>
@@ -653,14 +774,14 @@
                               <Component id="jButton3" min="-2" pref="176" max="-2" attributes="0"/>
                           </Group>
                       </Group>
-                      <EmptySpace min="0" pref="653" max="32767" attributes="0"/>
+                      <EmptySpace min="0" pref="430" max="32767" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
             <DimensionLayout dim="1">
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="1" attributes="0">
-                      <EmptySpace min="-2" pref="40" max="-2" attributes="0"/>
+                      <EmptySpace min="-2" pref="27" max="-2" attributes="0"/>
                       <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
                       <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
@@ -922,7 +1043,7 @@
             </Component>
             <Component class="javax.swing.JTextField" name="jTextField11">
               <Properties>
-                <Property name="text" type="java.lang.String" value="30%"/>
+                <Property name="text" type="java.lang.String" value="15%"/>
               </Properties>
             </Component>
             <Component class="javax.swing.JLabel" name="jLabel18">
@@ -1172,11 +1293,10 @@
             <Component class="javax.swing.JComboBox" name="jComboBox3">
               <Properties>
                 <Property name="model" type="javax.swing.ComboBoxModel" editor="org.netbeans.modules.form.editors2.ComboBoxModelEditor">
-                  <StringArray count="4">
+                  <StringArray count="3">
                     <StringItem index="0" value="24 FO"/>
                     <StringItem index="1" value="12 FO"/>
                     <StringItem index="2" value="6 FO"/>
-                    <StringItem index="3" value=" "/>
                   </StringArray>
                 </Property>
               </Properties>
@@ -1274,7 +1394,7 @@
                               <Component id="jButton6" alignment="0" max="32767" attributes="1"/>
                               <Component id="jButton7" alignment="0" max="32767" attributes="1"/>
                           </Group>
-                          <EmptySpace pref="846" max="32767" attributes="0"/>
+                          <EmptySpace pref="623" max="32767" attributes="0"/>
                           <Component id="jButton4" min="-2" max="-2" attributes="0"/>
                           <EmptySpace max="-2" attributes="0"/>
                       </Group>
@@ -1354,7 +1474,7 @@
                   <Properties>
                     <Property name="editable" type="boolean" value="false"/>
                     <Property name="contentType" type="java.lang.String" value="text/html" noResource="true"/>
-                    <Property name="text" type="java.lang.String" value="&lt;html&gt;&#xa;  &lt;head&gt;&#xa;&#xa;  &lt;/head&gt;&#xa;  &lt;body&gt;&#xa; &lt;b&gt;Mod&#xe8;le r&#xe9;seau d&apos;acc&#xe8;s BLOM et tarification du d&#xe9;groupage v1.1 du 05/10/2017&lt;/b&gt;&lt;br&gt;&#xa;&lt;br&gt;&#xa;Direction &#xe9;conomie, march&#xe9;s et num&#xe9;rique&lt;br&gt;&#xa;Autorit&#xe9; de r&#xe9;gulation des communications &#xe9;lectroniques et des postes&lt;br&gt;&#xa;R&#xe9;publique fran&#xe7;aise&lt;br&gt;&#xa;&lt;br&gt;&#xa;&lt;i&gt;Utilisation par un tiers possible sous la licence BSD 2-clause &quot;Simplified&quot; License d&#xe9;taill&#xe9;e en t&#xea;te de chaque fichier source&lt;/i&gt;&lt;br&gt;&#xa;&lt;br&gt;&lt;br&gt;&lt;br&gt;&#xa;Ce mod&#xe8;le utilise les biblioth&#xe8;ques libres suivantes :&lt;br&gt;&#xa;&lt;br&gt;&#xa;&#x2022;&#x9;GeoTools&lt;br&gt;&#xa;Traitement de fichiers et de donn&#xe9;es g&#xe9;ographiques -  Licence publique g&#xe9;n&#xe9;rale limit&#xe9;e GNU&lt;br&gt;&#xa;Utilisation de la version 17.1&lt;br&gt;&#xa;http://geotools.org/&lt;br&gt;&#xa;&lt;br&gt;&#xa;&#x2022;&#x9;JGraphT&lt;br&gt;&#xa;Structures et algorithmes de graphes &#x2013; Licence publique g&#xe9;n&#xe9;rale limit&#xe9;e GNU ou Licence Publique Eclipse&lt;br&gt;&#xa;http://www.jgrapht.org/&lt;br&gt;&#xa;&lt;br&gt;&#xa;&#x2022;&#x9;Guava&lt;br&gt;&#xa;Utilitaires, classes g&#xe9;n&#xe9;riques et autres fonctionnalit&#xe9;s -  Licence Apache 2.0&lt;br&gt;&#xa;https://github.com/google/guava/&lt;br&gt;&#xa;&lt;br&gt;&#xa;&#x2022;&#x9;KD-Tree&lt;br&gt;&#xa;Indexation spatiale -  Licence publique g&#xe9;n&#xe9;rale limit&#xe9;e GNU&lt;br&gt;&#xa;http://home.wlu.edu/~levys/software/kd/&lt;br&gt;&#xa;&lt;br&gt;&#xa;  &lt;/body&gt;&#xa;&lt;/html&gt;&#xa;&#xa;"/>
+                    <Property name="text" type="java.lang.String" value="&lt;html&gt;   &lt;head&gt;    &lt;/head&gt;   &lt;body&gt;  &lt;b&gt;Mod&#xe8;le r&#xe9;seau d&apos;acc&#xe8;s BLOM et tarification du d&#xe9;groupage v1.2 du 10/04/2020&lt;/b&gt;&lt;br&gt; &lt;br&gt; Direction &#xe9;conomie, march&#xe9;s et num&#xe9;rique&lt;br&gt; Autorit&#xe9; de r&#xe9;gulation des communications &#xe9;lectroniques, des postes et de la distribution de la presse&lt;br&gt; R&#xe9;publique fran&#xe7;aise&lt;br&gt; &lt;br&gt; &lt;i&gt;Utilisation par un tiers possible sous la licence BSD 2-clause &quot;Simplified&quot; License d&#xe9;taill&#xe9;e en t&#xea;te de chaque fichier source&lt;/i&gt;&lt;br&gt; &lt;br&gt;&lt;br&gt;&lt;br&gt; Ce mod&#xe8;le utilise les biblioth&#xe8;ques libres suivantes :&lt;br&gt; &lt;br&gt; &#x2022;&#x9;GeoTools&lt;br&gt; Traitement de fichiers et de donn&#xe9;es g&#xe9;ographiques -  Licence publique g&#xe9;n&#xe9;rale limit&#xe9;e GNU&lt;br&gt; Utilisation de la version 17.1&lt;br&gt; http://geotools.org/&lt;br&gt; &lt;br&gt; &#x2022;&#x9;JGraphT&lt;br&gt; Structures et algorithmes de graphes &#x2013; Licence publique g&#xe9;n&#xe9;rale limit&#xe9;e GNU ou Licence Publique Eclipse&lt;br&gt; http://www.jgrapht.org/&lt;br&gt; &lt;br&gt; &#x2022;&#x9;Guava&lt;br&gt; Utilitaires, classes g&#xe9;n&#xe9;riques et autres fonctionnalit&#xe9;s -  Licence Apache 2.0&lt;br&gt; https://github.com/google/guava/&lt;br&gt; &lt;br&gt; &#x2022;&#x9;KD-Tree&lt;br&gt; Indexation spatiale -  Licence publique g&#xe9;n&#xe9;rale limit&#xe9;e GNU&lt;br&gt; http://home.wlu.edu/~levys/software/kd/&lt;br&gt; &lt;br&gt;   &lt;/body&gt; &lt;/html&gt;  "/>
                   </Properties>
                 </Component>
               </SubComponents>

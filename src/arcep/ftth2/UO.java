@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * Copyright (c) 2020, Autorité de régulation des communications électroniques, des postes et de la distribution de la presse
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -190,7 +190,7 @@ public class UO {
         for (int i = 0;i<immeubles.length;i++){
             immeubles[i] = (int) Math.round(immeublesAbsolu[i]*ratioCorrectif);
         }
-        for (int i = 5;i<9;i++){ // NB :  i = 5 pour ne pas prendre les "immeubles" trop petits
+        for (int i = 5;i<9;i++){ // NB : on ne compte à ce stade pas les batiments avec un nombre de locaux trop petits, qui ne constituent pas des immeubles a priori
             nbImmeubles += immeubles[i];
             nbPBOimmeubles += immeubles[i]*Math.ceil(i/ (double) parametres.nbMaxLignesPBO);
         }
@@ -207,7 +207,7 @@ public class UO {
             reste -= n;
             modePose--;
         }
-        if (reste > 0) System.out.println("Plus de PBOint estimés que le total de PBO trouvés !"); // normalement inutile désormais
+        if (reste > 0) System.out.println("Plus de PBOint estimés que le total de PBO trouvés !"); 
     }
 
     public void setNRO(Parametres parametres){

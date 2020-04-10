@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * Copyright (c) 2020, Autorité de régulation des communications électroniques, des postes et de la distribution de la presse
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,7 @@ public class AreteBLOM extends Arete {
     
     public Noeud n; // extrémité avale en étiquette
     private final List<AreteBLOM> filles = new ArrayList<>(); // arêtes filles pour la structure en arbre
-    public int modePoseSortie; // 0 = aérien (d'origine), 1 = PT reconstruit aérien, 2 = souterrain réutilisable (d'origine), 3 = PT reconstruit souterrain
+    public int modePoseSortie; // 0 = aérien (d'origine), 1 = reconstruit aérien, 2 = souterrain réutilisable (d'origine), 3 = reconstruit souterrain
     
     //Compte des lignes avant mutualisation
     private int lignesZMD = 0;
@@ -53,6 +53,9 @@ public class AreteBLOM extends Arete {
     private final Map<String, Integer> nbLiensCollectePM = new HashMap<>();
     
     private final Map<String,Integer> idPM = new HashMap<>();
+    
+    // Booléen indiquant si l'arête porte des fibres de transport, utilisée pour attribuer le modePoseSortie
+    private boolean hasNonMutu = false;
     
     // UO
     private HashBasedTable<Boolean, String, int[]> nbCables; // on utilise true et false pour mutu et non mutu, et la string pour les zones
@@ -155,7 +158,7 @@ public class AreteBLOM extends Arete {
         return lignesZMD + lignesZTD_BD + lignesZTD_HD_PMext + lignesZTD_HD_PMint;
     }
     
-    // fonction récursive terminale pour la création d'un arbre simplifié à partire de l'existant
+    // fonction récursive terminale pour la création d'un arbre simplifié à partir de l'existant
     public void fusionAretes(AreteBLOM mere, double longueur, List<Coordinate> listePoints){
         if ((filles.size() == 1) && (n.demandeLocaleTotale() == 0) && (filles.get(0).modePose == modePose)){ // le cas où on continue sans rien ajouter au graphe : une seule arête fille et pas de lignes au noeud
             for (int i = 0;i<this.points.length-1;i++){
@@ -165,7 +168,6 @@ public class AreteBLOM extends Arete {
         }
         else{
             AreteBLOM nouvelleArete = new AreteBLOM(this, longueur, listePoints);
-            //System.out.println("Lignes portées par l'arête "+nouvelleArete.id+" en ZMD : "+nouvelleArete.lignesAval("ZMD"));
             mere.addFille(nouvelleArete);            
             // itération en profondeur
             for (AreteBLOM fille : filles){
@@ -220,7 +222,7 @@ public class AreteBLOM extends Arete {
             delta = delta - filleHausseMax.n.lignesSupSeuil + filleHausseMax.n.lignesInfSeuil;
         }
         
-        // étape 4 : on peut désormais placer un PM respectant le critère de distance et "déclasser" ceux qui sontregroupés
+        // étape 4 : on peut désormais placer un PM respectant le critère de distance et "déclasser" ceux qui sont regroupés
         int demandePM = n.demandeLocaleExt(zone);
         this.n.distri = new ArrayList<>();
         for (int i = 0;i<demandePM;i++){
@@ -268,7 +270,7 @@ public class AreteBLOM extends Arete {
         
         // étape 3 : tant qu'on est dans le mauvais cas on exclut des regroupables les PM qui font le plus pencher la balance du mauvais côté
         while(Math.floor(deltaDistanceCumulee)  > 0){ // pas possible si plus que de la demande locale (car alors delta <= 0) --> termine bien //le floor sert à éviter le cas des négatifs si proche de 0 que le test est positif
-            //System.out.println("deltaDistanceCumulee : "+deltaDistanceCumulee);
+            
             AreteBLOM filleDeltaMax = this; // de telle sorte qu'on puisse tester sans échec le dernier terme de la condition ci-dessous (taillePM renvoie 0 à ce stade)
             double deltaMax = 0, delta;
             for (AreteBLOM fille : regroupables){
@@ -320,7 +322,14 @@ public class AreteBLOM extends Arete {
         return numeroSuivant;
     }
     
-    // fonction récursive
+    /**
+     * fonction récursive permettant d'établir la profondeur maximale de l'arbre
+     * à partir d'une arête donnée. Utilisée par BLO sur root.calculNiveau() pour
+     * connaitre le nombre maximal d'arêtes parcourues lorsque l'on descend l'arbre
+     * depuis le NRO (coloriage des feuilles (niveau = 1) vers le tronc)
+     * 
+     * @return (int) nombre maximal d'arêtes dans une lignée issue de l'AreteBLOM
+     */
     public int calculNiveau(){
         int niv = 0;
         for (AreteBLOM a : this.filles){
@@ -332,13 +341,34 @@ public class AreteBLOM extends Arete {
         return this.niveau;
     }
     
-    // fonction récursive
+    /**
+     * Fonction récursive permettant d'établir la longueur totale de GC dans
+     * l'arbre d'AreteBLOM issues d'un NRO
+     * 
+     * @return (double) longueur totale de GC utilisée par le FttH dans la ZANRO
+     */
     public double longueurTotale(){
         double longueurTot = this.longueur;
         for (AreteBLOM a : this.filles){
             longueurTot+=a.longueurTotale();
         }
         return longueurTot;
+    }
+    
+    /**
+     * Fonction récursive permettant d'établir la longueur totale de GC reconstruit
+     * dans l'arbre d'AreteBLOM issues d'un NRO
+     * 
+     * @return (double) longueur totale de GC reconstruit utilisée par le FttH
+     * dans la ZANRO
+     */
+    public double longueurTotaleReconstruite(){
+        double longueurTotRec = 0;
+        if (this.modePose == 4 || this.modePose > 10) longueurTotRec = this.longueur;
+        for (AreteBLOM a : this.filles){
+            longueurTotRec+=a.longueurTotaleReconstruite();
+        }
+        return longueurTotRec;
     }
     
     ////////////////////////////////////////////
@@ -368,27 +398,83 @@ public class AreteBLOM extends Arete {
         return longueurP;
     }
     
-    // fonction récursive pour établir le modePose en sortie à partir de celui d'entrée (pas de coloriage)
+    // fonction pour établir le modePose en sortie à partir de celui d'entrée (pas de coloriage)
     public void setModesPose(){
-        switch(this.modePose){
-            case 0:
-            case 1:
-            case 2:
-                this.modePoseSortie = 0;
-                break;
-            case 4:
-                this.modePoseSortie = 1;
-                break;
-            case 11:
-                this.modePoseSortie = 3;
-                break;
-            default:
-                this.modePoseSortie = 2;
-                break;
+        
+        if (this.modePose <= 2) {
+            // mode de pose initial = 0, 1 ou 2 correspondant à du GC aérien ou en façade
+            this.modePoseSortie = 0;    // GC aérien existant
+        } else if (this.modePose == 3 || (this.modePose >= 5 && this.modePose <= 10)) {
+            // modes de pose 3 = "immeuble" et 5-10 correspondant à du GC souterrain
+            this.modePoseSortie = 2;    // GC souterrain existant
+        } else {
+            // par défaut : reconstruction en souterrain s'il y a du transport, en aérien sinon
+            if (this.hasNonMutu) {
+                this.modePoseSortie = 3;    // GC reconstruit en souterrain
+            } else {
+                this.modePoseSortie = 1;    // GC reconstruit en aérien
+            }
         }
+        
+        // Récursion
         for (AreteBLOM a : this.filles){
             a.setModesPose();
         }
+    }
+    
+    /**
+     * Fonction récursive permettant l'attribution de mode de pose de sortie pour le GC,
+     *  - d'après le mode de pose d'entrée lorsqu'il est utilisable directement,
+     *  - et par coloriage lorsqu'il est reconstruit
+     * 
+     * @param niveau (int) indique le niveau de profondeur dans l'arbre à laquelle s'applique la méthode
+     * @param seuilReconstructionAerienSouterrain (double) longueur à reconstruire en aérien
+     * @param longueurReconstruiteParcourue (double) longueur de GC reconstruit à laquelle un mode pose a déjà été attribué
+     * @return (double) longueur reconstruite parcourue dans des niveaux inférieurs (plus vers les feuilles)
+     */
+    public double setModesPose(int niveau, double seuilReconstructionAerienSouterrain, double longueurReconstruiteParcourue){
+        double longueurRecP = longueurReconstruiteParcourue;
+        if (niveau == this.niveau){
+            switch(this.modePose){
+                case 0:
+                case 1:
+                case 2:
+                    // aérien existant
+                    this.modePoseSortie = 0;
+                    break;
+                case 3:
+                case 5:
+                case 6:
+                case 7:
+                case 8:
+                case 9:
+                case 10:
+                    // souterrain existant
+                    this.modePoseSortie = 2;
+                    break;
+                default:
+                    // reconstruit...
+                    if (longueurReconstruiteParcourue < seuilReconstructionAerienSouterrain){
+                        // en aérien
+                        this.modePoseSortie = 1; 
+                    } else {
+                        // en souterrain
+                        this.modePoseSortie = 3; 
+                    }
+                    longueurRecP += this.longueur;
+                    if((longueurRecP - this.longueur < seuilReconstructionAerienSouterrain) & (longueurRecP > seuilReconstructionAerienSouterrain)) {
+                        System.out.println("Reconstruit en aérien : " + longueurRecP + " | Longueur de cette arête (" + this.id + ") :" + this.longueur);
+                    }
+                    break;
+            }
+            
+        } else if (niveau < this.niveau){
+            Queue<AreteBLOM> file = new ArrayBlockingQueue(filles.size(), true, filles);
+            while(!file.isEmpty()){
+                longueurRecP = file.remove().setModesPose(niveau, seuilReconstructionAerienSouterrain, longueurRecP);
+            }
+        }
+        return longueurRecP;
     }
     
     //////////////////////////
@@ -449,6 +535,24 @@ public class AreteBLOM extends Arete {
         this.calculBoitiersEpissures(zones, parametres);
     }
     
+    // Les deux fonctions ci-après reprennent le principe de calculUO mais en
+    // séparant demande, d'une part, et UO, d'autre part, afin de permettre
+    // l'utilisation de la demande non mutualisée pour la détermination du mode de pose
+    public void calculDemande(Set<String> zones, Parametres parametres){
+        for (AreteBLOM fille : filles){
+            fille.calculUO(zones, parametres);
+        }
+        this.setDemande(zones, parametres);
+    }
+    
+    public void calculAutresUO(Set<String> zones, Parametres parametres){
+        for (AreteBLOM fille : filles){
+            fille.calculAutresUO(zones, parametres);
+        }
+        this.calculCables(zones, parametres);
+        this.calculSectionGC(zones, parametres);
+        this.calculBoitiersEpissures(zones, parametres);
+    }
     
     private void setDemande(Set<String> zones, Parametres parametres){
         for (String zone : zones){
@@ -472,6 +576,7 @@ public class AreteBLOM extends Arete {
             this.demandeFibresMutu.put(zone, mutu);
             this.demandeFibresNonMutu.put(zone, nonMutu);
             this.nbLiensCollectePM.put(zone, collecte);
+            if(nonMutu > 0) this.hasNonMutu = true;
         }
     }
     
@@ -557,13 +662,6 @@ public class AreteBLOM extends Arete {
                             }
                         }
                     }
-                    
-                    // juste pour vérifier le critère sur la longueur de cable sans boîtier
-                    /*if (filles.isEmpty() || (filles.size() == 1 && this.n.isPMExt(zone))){
-                        for (int i=0; i<cables.length;i++){
-                            boitiers[i] += cables[i];
-                        }
-                    }*/
 
                     // calcul des boîtiers et épissures supplémentaires en cas (de suite) d'arête(s) trop longue
                     distanceDernierBoitier = this.longueur;
@@ -638,6 +736,7 @@ public class AreteBLOM extends Arete {
         builderLineaires.add("ID", Integer.class);
         builderLineaires.add("LONGUEUR", Double.class);
         builderLineaires.add("MODE_POSE", Integer.class);
+        builderLineaires.add("MODE_INIT", Integer.class);
         builderLineaires.length(4).add("ZONE_MACRO", String.class);
         builderLineaires.length(13).add("NRO", String.class);
         builderLineaires.length(3).add("TYPE", String.class);
@@ -677,6 +776,7 @@ public class AreteBLOM extends Arete {
         featureBuilderLineaires.add(this.id);
         featureBuilderLineaires.add(this.longueur);
         featureBuilderLineaires.add(this.modePoseSortie);
+        featureBuilderLineaires.add(this.modePose);
         featureBuilderLineaires.add(zoneMacro);
         featureBuilderLineaires.add(CodeNRO);
         featureBuilderLineaires.add(type);

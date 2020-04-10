@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * Copyright (c) 2020, Autorité de régulation des communications électroniques, des postes et de la distribution de la presse
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,12 +31,13 @@ import edu.wlu.cs.levy.CG.*;
 public class NRA extends PointReseau {
     
     private int PODI = 0; // nombre de lignes rattachées au NRA
-    private final ArrayList<PC> listePC = new ArrayList<>();; // maintenue triée dans l'ordre croissant des distances NROPC (possible que lorsque les PC ont été rattachés au réseau)
+    private final ArrayList<PC> listePC = new ArrayList<>();; // maintenue triée dans l'ordre croissant des distances NROPC (cela n'est possible que lorsque les PC ont été rattachés au réseau)
     private final ArrayList<PointReseau> fils = new ArrayList<>();;
     boolean nouveau;
     private final List<String> nraComplementaires = new ArrayList<>();;
         
     HashSet<NRA> listeNRAduNRO = new HashSet<>();
+    double distancemaxNRAregroupes = 0;
     boolean traite = false;
     NRA nro;
 
@@ -87,7 +88,7 @@ public class NRA extends PointReseau {
         return listePC;
     }
 
-    public void checkPC(double distanceLimite){
+    public void checkPC(double distanceLimite){ // methode appelée pour filtrer les PC trop loin de leurs NRA de rattachement lors de la modélisation du réseau
         ListIterator<PC> iterator = this.listePC.listIterator();
         PC pc;
         double[] coord = new double[]{this.x, this.y};
@@ -100,15 +101,18 @@ public class NRA extends PointReseau {
         }
     }
 
-    public void regrouper(NRA nra) {
+    public void regrouper(NRA nra, double distancemaxNRAregroupes) { // methode qui assure les regroupements individuels : déclaration des proto-NRO et mise à jour de la distance maximum en aval du NRA regroupeur le cas échéant
         this.ajoutPC(nra.listePC);
         this.traite = true;
         this.nro = this;
         nra.traite = true;
-        for (NRA nra1 : nra.listeNRAduNRO){
+        for (NRA nra1 : nra.listeNRAduNRO){ // le NRA regroupe l'ensemble des NRA precedemment regroupes par le NRA qu'il vient de regrouper
             nra1.nro = this;
             listeNRAduNRO.add(nra1);
         }
+        if (distancemaxNRAregroupes > this.distancemaxNRAregroupes) { // on met a jour la distance maximum en aval du NRA regroupeur le cas échéant
+            this.distancemaxNRAregroupes = distancemaxNRAregroupes;
+         }
     }
     
     public Set<NRA> libereNRAMultiples(Map<String,Map<String,NRA>> listeNRA){

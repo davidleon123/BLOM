@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * Copyright (c) 2020, Autorité de régulation des communications électroniques, des postes et de la distribution de la presse
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -52,6 +52,7 @@ public class ReseauCuivre {
     
     private final Comparateur comparateurNRA = new Comparateur();
 
+    // objets contenant le reseau modelise
     public ReseauCuivre(String cheminReseau, String dpt, int nbLignesMinNRO, double distMaxNRONRA){
         this.cheminReseau = cheminReseau;
         this.dpt = dpt;
@@ -70,16 +71,19 @@ public class ReseauCuivre {
         String[] donneesLigne;
         double[] coord = new double[2];
         NRA nra;
+        int pos_codenra = 0;
+        int pos_coordx = 1;
+        int pos_coordy = 2;
         try{               
             BufferedReader ptRes = new BufferedReader(new FileReader(dir+"/"+dir.getName()+"_"+ dpt + ".csv"));
             ptRes.readLine();
             while ((ligne = ptRes.readLine()) != null) { 
                 donneesLigne = ligne.split(";");
-                codeNRA = donneesLigne[0].replace("\"", ""); 
+                codeNRA = donneesLigne[pos_codenra].replace("\"", ""); 
                 if (codeNRA.substring(5,7).equals("E0"))
                     codeNRA = codeNRA.substring(0, 5) + "EOO";
-                coord[0] = Double.parseDouble(donneesLigne[1].replace("\"", "").replace(",", ".")); 
-                coord[1] = Double.parseDouble(donneesLigne[2].replace("\"", "").replace(",", ".")); 
+                coord[0] = Double.parseDouble(donneesLigne[pos_coordx].replace("\"", "").replace(",", ".")); 
+                coord[1] = Double.parseDouble(donneesLigne[pos_coordy].replace("\"", "").replace(",", ".")); 
                 nra = new NRA(codeNRA, coord[0], coord[1], false);
                 listeNRAinitiaux.put(codeNRA, nra);
                 try {indexNRA.insert(coord, nra);}
@@ -104,18 +108,22 @@ public class ReseauCuivre {
         String[] donneesLigne;
         double[] coord = new double[2];
         SR sr;
+        int pos_codesr = 0;
+        int pos_codenra = 1;
+        int pos_coordx = 2;
+        int pos_coordy = 3;
         try{ 
             BufferedReader ptRes = new BufferedReader(new FileReader(dir+"/"+dir.getName()+"_"+ dpt + ".csv"));
             ptRes.readLine();
             
             while ((ligne = ptRes.readLine()) != null) { 
                 donneesLigne = ligne.split(";");
-                codeSR = donneesLigne[0].replace("\"","");
-                codeNRA = donneesLigne[1].replace("\"", "");
+                codeSR = donneesLigne[pos_codesr].replace("\"","");
+                codeNRA = donneesLigne[pos_codenra].replace("\"", "");
                 if (codeNRA.substring(5,7).equals("E0"))
                     codeNRA = codeNRA.substring(0, 5) + "EOO";
-                coord[0] = Double.parseDouble(donneesLigne[2].replace("\"", "").replace(",", ".")); 
-                coord[1] = Double.parseDouble(donneesLigne[3].replace("\"", "").replace(",", "."));
+                coord[0] = Double.parseDouble(donneesLigne[pos_coordx].replace("\"", "").replace(",", ".")); 
+                coord[1] = Double.parseDouble(donneesLigne[pos_coordy].replace("\"", "").replace(",", "."));
                 sr = new SR(codeSR, coord[0], coord[1], codeNRA);
                 try{
                     indexSR.insert(coord, sr);
@@ -133,17 +141,23 @@ public class ReseauCuivre {
         System.out.println("Nombre de SR du réseau cuivre départemental (en lecture) : "+listeSRinitiaux.values().size());
     }
 
-    public void loadPC(String dirPC, boolean analyse, PrintWriter sortie){
+    public void loadPC(String dirPC, boolean analyse, PrintWriter sortie, boolean lireSR){
         System.out.println("Lecture des PC du département "+dpt);
         listePC = new ArrayList<>();
-        String ligne, codePC = "", codeSR = "", zone, codeNRA  = "";
+        String ligne, codePCSR = "", codeSR = "", zone, codeNRA  = "";
         String[] donneesLigne;
         int nbAcces;
         double[] coord = new double[2];
         NRA nra;
         PC pc;
         PointReseau pt;
-        
+        int pos_codepcsr = 0;
+        int pos_codenra = 1;
+        int pos_codesr = 2;
+        int pos_coordx_pc = 4;
+        int pos_coordy_pc = 5;
+        int pos_nbacces = 7;
+        int pos_zone = 8;
         // gestion des galeries visitables
         boolean lireCommunes = dpt.equals("13")||dpt.equals("69");
         List<String> codeCommunes = communes(dpt);
@@ -156,23 +170,23 @@ public class ReseauCuivre {
             ptRes.readLine();
             while ((ligne = ptRes.readLine()) != null) {
                 donneesLigne = ligne.split(";");
-                codePC = donneesLigne[2].replace("\"", "");
-                codeSR = donneesLigne[1].replace("\"",""); 
-                codeNRA = donneesLigne[0].replace("\"", ""); 
+                codePCSR = donneesLigne[pos_codepcsr].replace("\"", ""); // la concaténation de la clé PC et de la clé SR contenues dans la base des lignes cuivre utilisée permet d'identifier les PC (la clé PC n'est pas suffisante)
+                codeNRA = donneesLigne[pos_codenra].replace("\"", ""); 
+                codeSR = donneesLigne[pos_codesr].replace("\"",""); 
                 if (codeNRA.substring(5,7).equals("E0"))
                     codeNRA = codeNRA.substring(0, 5) + "EOO";
-                coord[0] = Double.parseDouble(donneesLigne[3].replace("\"", "").replace(",", ".")); 
-                coord[1] = Double.parseDouble(donneesLigne[4].replace("\"", "").replace(",", "."));
-                nbAcces = Integer.parseInt(donneesLigne[6]);
-                zone = donneesLigne[7];
+                coord[0] = Double.parseDouble(donneesLigne[pos_coordx_pc].replace("\"", "").replace(",", ".")); 
+                coord[1] = Double.parseDouble(donneesLigne[pos_coordy_pc].replace("\"", "").replace(",", "."));
+                nbAcces = Integer.parseInt(donneesLigne[pos_nbacces]);
+                zone = donneesLigne[pos_zone];
                 if (nbAcces > 0){ // on exclut par précaution normalement inutile les PC qui n'ont pas au moins 1 accès
-                    nra = getNRA(codeNRA, zone, coord);
+                    nra = getNRA(codeNRA, zone, coord); // on rattache au NRA associé au code NRA lié au PC par défaut, sinon on rattache au NRA le plus proche si on ne retrouve pas le code NRA et en dernier recours on crée un NRA avec les coordonnées du PC si aucun NRA pertinent n'est trouvé.
                     if (lireSR){ // si on utilise les SR on rattache au SR
                         pt = getSR(codeSR, zone, nra);     
                     } else{ // sinon on rattache au NRA
                         pt = nra;
                     }
-                    pc = new PC(codePC,  coord[0], coord[1], pt, codeNRA, nbAcces, zone, paris||(lireCommunes&&codeCommunes.contains(donneesLigne[8])));
+                    pc = new PC(codePCSR,  coord[0], coord[1], pt, codeNRA, nbAcces, zone, paris||(lireCommunes&&codeCommunes.contains(donneesLigne[8])));
                     listePC.add(pc);
                     if (!lireSR) nra.addFils(pc, indexNRA);
                     nra.ajoutPC(pc);
@@ -181,13 +195,14 @@ public class ReseauCuivre {
             }
             ptRes.close();
             System.out.println("Nombre de NRA du réseau cuivre départemental (en lecture) : "+listeNRAinitiaux.values().size());
-            System.out.println("Nombre par zone après attribution :");
+            System.out.println("Nombre par zone aprés attribution :");
             for (String s : listeNRA.keySet()){
                 System.out.println(" - "+listeNRA.get(s).values().size()+" en zone "+s);
             }
+            
             if (lireSR){
                 System.out.println("Nombre de SR du réseau cuivre départemental (en lecture) : "+listeSRinitiaux.values().size());
-                System.out.println("Nombre par zone après attribution :");
+                System.out.println("Nombre par zone aprés attribution :");
                 for (String s : listeSR.keySet()){
                     System.out.println(" - "+listeSR.get(s).values().size()+" en zone "+s);
                 }
@@ -218,7 +233,7 @@ public class ReseauCuivre {
             
         } catch(Exception e){
             System.out.println("Exception lors de la lecture des PC");
-            System.out.println("Dpt "+dpt+"- NRA "+codeNRA+"- SR "+codeSR+"- PC "+codePC);
+            System.out.println("Dpt "+dpt+"- NRA "+codeNRA+"- SR "+codeSR+"- PC "+codePCSR);
             e.printStackTrace();
         }
     }
@@ -270,22 +285,22 @@ public class ReseauCuivre {
         if (!listeNRA.containsKey(zone)){
             listeNRA.put(zone, new HashMap<String,NRA>());
         }
-        NRA nra = listeNRA.get(zone).get(codeNRA);
+        NRA nra = listeNRA.get(zone).get(codeNRA); // on complète la liste des NRA de façon incrémentale par rapport à la liste des NRA en se basant sur le fichier des lignes cuivre
         if (nra == null){
-            nra = listeNRAinitiaux.get(codeNRA);
+            nra = listeNRAinitiaux.get(codeNRA); // fonctionnement nominal de la fonction : on recherche le code NRA dans la liste des NRA connus
             if (nra != null){
                 nra = new NRA(nra, zone);
                 listeNRA.get(zone).put(codeNRA, nra);
-            } else{
+            } else{ // le NRA n'a pas ete retrouve dans la liste des NRA initiale, on met à jour la liste utilisée par le modèle.
                 System.out.println("Pas de NRA correspondant au code : "+codeNRA);
                 try{
-                    nra = indexNRA.nearest(coord); // on regarde le plus proche et on en crée un nouveau s'il est trop loin
-                    if (nra.distance(coord) > 10000){
+                    nra = indexNRA.nearest(coord); // on recherche le NRA plus proche 
+                    if (nra.distance(coord) > 10000){ // s'il est vraiment trop loin on créée un nouveau NRA qu'on ajoute à la liste des NRA (et au 2D-Tree avec la position du PC)
                         System.out.println("On crée un nouveau NRA");
                         nra = new NRA(codeNRA, 0, 0, true, zone);                    
                         indexNRA.insert(coord, nra);
                         listeNRA.get(zone).put(codeNRA, nra);
-                    } else{
+                    } else{ // s'il est assez près on sélectionne le NRA le plus proche qu'on ajoute à la liste des NRA
                         if (listeNRA.get(zone).containsKey(nra.identifiant)){
                             nra = listeNRA.get(zone).get(nra.identifiant);
                         } else{
@@ -303,7 +318,7 @@ public class ReseauCuivre {
         return nra;
     }
     
-    // gestion des SR  (pour l'instant on rattache directement au NRA)
+    // gestion des SR  (il est plus commode de rattacher directement au NRA)
     private SR getSR(String codeSR, String z, NRA nra){
         String zone = z.replace("_HD", "").replace("_BD", "");
         if (!listeSR.containsKey(zone))
@@ -385,7 +400,7 @@ public class ReseauCuivre {
         return res;
     }
 
-    public void checkPC(double distanceLimite){
+    public void checkPC(double distanceLimite){ // fonction de filtrage des PC trop éloignés de leurs NRA, utilisée en prétraitement du regroupement des NRA
         for (String zone : this.listeNRA.keySet()){
             for(NRA nra : this.listeNRA.get(zone).values()){
                 nra.checkPC(distanceLimite);
@@ -406,18 +421,20 @@ public class ReseauCuivre {
             // ajout des NRA au graphe
             this.addNRA(grapheCollecte, indexCollecte, zone);
             
-            // ajout des liens de collecte au graphe
+            // ajout des liens de collecte connus au graphe
             System.out.println("chargement du réseau de collecte");
             this.readFichierCollecte(grapheCollecte, zone, dossierCollecte);
             
+            // ajout de liens pour les NRA isolés
             System.out.println("Ajout de liens pour les NRA isolés");
             this.ajoutNRAIsoles(grapheCollecte, indexCollecte);
 
-            // maintenant tout le monde est dans le graphe de collecte
+            // Tous les NRA du réseau modélisé ont été ajoutés au graphe de collecte
             for (NRA nra : grapheCollecte.vertexSet()){
                 System.out.println("NRA "+nra.identifiant+" : "+nra.podi()+" lignes");
             }
             
+            // Affichage de l'intégralité des liens des NRA du graphe de collecte
             System.out.println("Impression du graphe");
             for (NRA nra1 : grapheCollecte.vertexSet()){
                 System.out.print("NRA "+nra1.identifiant+", voisins :");
@@ -428,25 +445,25 @@ public class ReseauCuivre {
                 System.out.println();
             }
             
-            // idée de l'algo :
+            // idée de l'algorithme :
             // but : regrouper tous les NRA en-dessous du seuil nbLignesMinNRO (a priori 1000 lignes)
-            // - on aimerait avoir un arbre pour regrouper les NRA tranquillement mais tout ce qu'on a est un graphe pas du tout connexe et avec beaucoup de cycles
-            // - on va donc regrouper d'abord ceux qui n'ont qu'un voisin (les "faciles")
-            // - puis ceux qui ont plusieurs voisins (les "deuxiemes"), tout en revenant en arrière dès qu'on obtient des NRA à 1 voisin
-            // - enfin, on regroupe ceux qui, suite aux regroupements, n'en ont plus mais sont toujours trop petits (les "isoles")
+            // - on aimerait avoir un arbre pour regrouper les NRA facilement mais le graphe créé n'a aucune raison d'être connexe et contient des cycles
+            // - on va donc regrouper d'abord ceux qui n'ont qu'un voisin (les NRA dits "faciles")
+            // - puis ceux qui ont plusieurs voisins (les NRA dits "deuxiemes"), tout en revenant en arriére dés qu'on obtient des NRA à 1 voisin par ce processus
+            // - enfin, on regroupe ceux qui, suite aux regroupements, n'en ont plus mais sont toujours trop petits (les NRA dits "isolés")
             // - à chaque fois, on supprime le NRA regroupé du graphe et de l'index
 
-            // répartition de tous les NRA à regrouper
+            // initialisation des files de priorité pour le regroupement
             PriorityQueue<NRA> faciles = new PriorityQueue<>(10, comparateurNRA);
             PriorityQueue<NRA> deuxiemes = new PriorityQueue<>(10, comparateurNRA);
             PriorityQueue<NRA> isoles = new PriorityQueue<>(10, comparateurNRA);
-            
+           
             for (NRA nra : grapheCollecte.vertexSet()){
                 if (nra.podi() < nbLignesMinNRO){
                     switch(grapheCollecte.edgesOf(nra).size()){
                         case 0: // ce cas n'est pas censé arriver au départ
                             isoles.add(nra);
-                            System.out.println("Regroupement collecte : NRA très éloigné de tous les autres");
+                            System.out.println("Regroupement collecte : NRA trés éloigné de tous les autres");
                             System.out.println("Identifiant NRA : "+nra.identifiant);
                             break;
                         case 1:
@@ -459,29 +476,25 @@ public class ReseauCuivre {
                 }
             }
             
+	    // affichage des NRA par file de priorité
             System.out.println("Nombre de NRA à un voisin : "+faciles.size());
-            /*while (!faciles.isEmpty()){
-                NRA nra = faciles.poll();
-                System.out.println("Le NRA "+nra.identifiant+" a "+nra.podi()+" lignes.");
-            }*/
+
             System.out.println("Nombre de NRA à plusieurs voisins : "+deuxiemes.size());
-            /*while (!deuxiemes.isEmpty()){
-                NRA nra = deuxiemes.poll();
-                System.out.println("Le NRA "+nra.identifiant+" a "+nra.podi()+" lignes.");
-            }*/
+
             System.out.println("Nombre de NRA isolés : "+isoles.size());
             
             this.regroupeMonoVoisin(grapheCollecte, indexCollecte, faciles, deuxiemes, isoles); // on regroupe dynamiquement les faciles
-            // note : malgré l'appel à regroupeMonoVoisin dans la fonction suivante on doit l'appeler une première fois de manière isolée au cas où la file "deuxièmes" serait vide à l'origine
-            // à ce moment il n'y a plus de nra < seuil et avec un unique voisin
+            // note : malgré l'appel à regroupeMonoVoisin dans la fonction suivante on doit l'appeler une premiére fois de maniére isolée au cas où la file "deuxiémes" serait vide à l'origine
+           
+            // à ce moment il n'y a plus de nra dont le nombre de lignes est inférieur au seuil fixé par l'utilisateur et avec un unique voisin
 
             this.regroupeMultiVoisins(grapheCollecte, indexCollecte, faciles, deuxiemes, isoles);
-            // cette fonction appelle regroupeMonoVoisin
+            // cette fonction commence par appeler regroupeMonoVoisin lors de son exécution
 
-            // désormais les seuls NRA de taille < seuil n'ont pas (plus) de voisins
+            // désormais les seuls NRA dont le nombre de lignes est inférieur au seuil fixé par l'utilisateur n'ont pas (plus) de voisins
             this.regroupeSansVoisin(grapheCollecte, indexCollecte, isoles);
 
-            // enfin faire le tour de tous les proto-nro restant dans le graphe et les mettre dans listeNRO
+            // tous les "proto-NRO" dans le graphe à ce stade sont désormais considérés comme les NRO retenus et sont ajoutés dans les listeNRO correspondantes
             this.listeNRO.put(zone, new ArrayList<NRA>());
             for (NRA nra : grapheCollecte.vertexSet()){
                 nra.nro = nra;
@@ -496,28 +509,11 @@ public class ReseauCuivre {
 
             System.out.println("Nombre de NRO en zone "+zone+" : "+this.listeNRO.get(zone).size());
         }
-        
-        /*System.out.println("Nombre de NRO en zone AMII : "+listeNRO.get("ZMD_AMII").size());
-        for (NRA nra : listeNRO.get("ZMD_AMII")){
-            System.out.print("NRO "+nra.identifiant+" ; NRA correspondants :");
-            for (NRA nraReg : nra.listeNRAduNRO){
-                System.out.print(" - "+nraReg.identifiant);
-            }
-            System.out.println();
-        }*/
-        
+
         
         System.out.println("Verification inter zone");
-        this.verificationInterZone();
-        
-        /*System.out.println("Nombre de NRO en zone AMII : "+listeNRO.get("ZMD_AMII").size());
-        for (NRA nra : listeNRO.get("ZMD_AMII")){
-            System.out.print("NRO "+nra.identifiant+" ; NRA correspondants :");
-            for (NRA nraReg : nra.listeNRAduNRO){
-                System.out.print(" - "+nraReg.identifiant);
-            }
-            System.out.println();
-        }*/
+        this.verificationInterZone(); // ajustement complementaire pour les NRO qui ne respectent pas le seuil de lignes
+                                      // s'il on trouve un NRO avec le même code dans une autre zone qui a un nombre de lignes supérieur alors on rattache les lignes du NRO ne respectant pas le seuil à ce NRO
         
         for (String zone : this.listeNRO.keySet()){
             System.out.println("Nombre de NRO en zone "+zone+" : "+this.listeNRO.get(zone).size());
@@ -536,11 +532,11 @@ public class ReseauCuivre {
                 indexCollecte.insert(coord, nra);
                 collecte.addVertex(nra);
             } catch(KeyDuplicateException e){
-                System.out.println("Problème avec le NRA "+nra.identifiant+" : deux NRA au même endroit !");
+                System.out.println("Probléme avec le NRA "+nra.identifiant+" : deux NRA au méme endroit !");
                 System.out.println("On regroupe directement dans ce cas");
                 try{
                     NRA nro = indexCollecte.search(coord);
-                    nro.regrouper(nra);
+                    nro.regrouper(nra, 0); // on considere que les deux NRA sont situés au meme endroit donc on intialise la distance maximum de regroupement du NRA regroupeur à 0
                     iterator.remove();
                     complementListeNRA.put(nra.identifiant, nro);
                 }   catch(KeySizeException e1){
@@ -560,19 +556,23 @@ public class ReseauCuivre {
             String line;
             String[] fields;
             Map<String, NRA> listeNRAZone = this.listeNRA.get(zone);
+            NRA nravoisin;
+            int pos_distancelien = 0;
+            int pos_codenra1 = 1;
+            int pos_codenra2 = 2;
             while ((line = fichierLiens.readLine())!=null){
                 fields = line.split(";");
-                String codeNRA1 = fields[1], codeNRA2 = fields[4];
+                String codeNRA1 = fields[pos_codenra1], codeNRA2 = fields[pos_codenra2];
                 if (codeNRA1.endsWith("E00"))
                     codeNRA1 = codeNRA1.substring(0,5) + "EOO";
                 if (codeNRA2.endsWith("E00"))
                     codeNRA2 = codeNRA2.substring(0,5) + "EOO";
                 NRA nra1 = listeNRAZone.get(codeNRA1), nra2 = listeNRAZone.get(codeNRA2);
-                if (nra1!=null && nra2!=null && !nra1.equals(nra2)){
-                    double distance = Parametres.arrondir(Double.parseDouble(fields[0]),1);
-                    collecte.setEdgeWeight(collecte.addEdge(nra1, nra2), distance);
-
+                if (nra1!=null && nra2!=null && !nra1.equals(nra2)){ // on ajoute le lien au graphe de collecte s'il on trouve les deux NRA dans la zone en cours de traitement et que les NRA du lien sont bien différents
+                    double distance = Parametres.arrondir(Double.parseDouble(fields[pos_distancelien]),1);
+                    collecte.setEdgeWeight(collecte.addEdge(nra1, nra2), distance); // creation d'une arete ponderee par la longueur du lien entre les deux NRA
                 }
+
             }
             fichierLiens.close();
             
@@ -590,32 +590,32 @@ public class ReseauCuivre {
     private void ajoutNRAIsoles(SimpleWeightedGraph<NRA, DefaultWeightedEdge> collecte, KDTree<NRA> indexCollecte){
         List<NRA> restants = new ArrayList<>();
 
-        for (NRA nra : collecte.vertexSet()){
+        for (NRA nra : collecte.vertexSet()){ // sélection des NRA isolés
             if (nra.podi() < nbLignesMinNRO && collecte.degreeOf(nra) == 0)
                 restants.add(nra);
         }
         
         Collections.sort(restants, comparateurNRA); // les nra sont triés par "podi" croissant
-        int n = indexCollecte.size();
+        int n = indexCollecte.size(); // utilisé hors cas nominal, explications ci dessous
         for (NRA nra : restants){
             double[] coord = {nra.x, nra.y};
             NRA voisin = null;
             int k = 2;
             while (voisin == null){
-                try{
+                try{ // on cherche le plus proche voisin dans le KDTree des NRA, hors le NRA en cours de traitement
                     voisin = indexCollecte.nearest(coord ,k).get(0);
                 }catch(KeySizeException e){
                     System.out.println("Exception anormale");
                     e.printStackTrace();
                 }
-                if (collecte.containsEdge(nra, voisin) && k<n){ // la deuxième condition est utile lorsque tous les nra de indexCollecte sont des NRA "restants" : on autorise alors un lien de moins (nécessaire dans un cas en "étoile")
+                if (collecte.containsEdge(nra, voisin) && k<n){ // la deuxiéme condition est utile lorsque tous les nra de indexCollecte sont des NRA "restants" : on autorise alors un lien de moins (nécessaire dans un cas en "étoile")
                     voisin = null;
                     k++;
                 }
             }
             
             double distance = nra.distance(voisin);
-            if (distance <= distMaxNRONRA){
+            if (distance <= distMaxNRONRA){ // on ajoute une arete dans le graphe si le plus proche voisin n'est pas trop loin
                 try{
                     collecte.setEdgeWeight(collecte.addEdge(nra, voisin), distance);
                 } catch(IllegalArgumentException e){
@@ -626,31 +626,37 @@ public class ReseauCuivre {
     }
     
     private void regroupeMonoVoisin(SimpleWeightedGraph<NRA, DefaultWeightedEdge> collecte, KDTree<NRA> indexCollecte, PriorityQueue<NRA> faciles, PriorityQueue<NRA> deuxiemes, PriorityQueue<NRA> isoles){
-        // l'utilisateur de cette fonction garantit que les NRA rpésent dans "faciles" ont un unique voisin, moins de nbLignesMinNRO lignes, et sont classés par ordre croissant du nb de lignes
+        // l'utilisateur de cette fonction garantit que les NRA présents dans la file des NRA dits "faciles" ont un unique voisin, moins de nbLignesMinNRO lignes, et sont classés par ordre croissant du nb de lignes
         try{
             while (!faciles.isEmpty()){
                 
                 NRA nra = faciles.poll();
-                DefaultWeightedEdge e = collecte.edgesOf(nra).iterator().next(); // un seul lien de collecte par hypothèse pour ce nra
+                DefaultWeightedEdge e = collecte.edgesOf(nra).iterator().next(); // un seul lien de collecte par hypothése pour ce nra
                 
                 // on regroupe avec le seul voisin
                 NRA voisin = getVoisin(collecte, nra, e);
                 boolean petitVoisin = voisin.podi() < nbLignesMinNRO; // utile + tard
                 System.out.println("Voisin choisi : "+voisin.identifiant);
-                if (collecte.getEdgeWeight(e) <= distMaxNRONRA){
+                double distancemaxNRAregroupes = nra.distancemaxNRAregroupes + collecte.getEdgeWeight(e); // distance maximum en aval pour le NRA voisin candidat pour le regroupement dans le cas où le regroupement aurait lieu
+                System.out.println("Distance au NRA voisin : " + collecte.getEdgeWeight(e));
+                System.out.println("Distance max de regroupement NRA courant : " + nra.distancemaxNRAregroupes);
+                System.out.println("Distance maximum éventuelle : " + distancemaxNRAregroupes);
+
+                // if ( collecte.getEdgeWeight(e) <= distMaxNRONRA){
+                if (distancemaxNRAregroupes <= distMaxNRONRA) { // on effectue le regroupement si la distance maximum en aval est inferieure au seuil fixe par l'utilisateur
                     System.out.println("NRA à un voisin regroupé : "+nra.identifiant);
-                    voisin.regrouper(nra);
+                    System.out.println("Nouvelle distance maximum de regroupement : " + distancemaxNRAregroupes);
+                    voisin.regrouper(nra, distancemaxNRAregroupes); // on regroupe le NRA courant et on met à jour la distance maximum en aval du NRA regroupeur
                     // on supprime "nra" du graphe et de l'index
                     collecte.removeVertex(nra);
                     double[] coord = {nra.x, nra.y};
                     indexCollecte.delete(coord);
-                } else{ // il est vraiment trop loin, en fait il est tout seul
+                } else{ // le seuil de distance ne permet pas d'effectuer le regroupement, ce NRA restera isole
                     collecte.removeEdge(e);
-                    //isoles.add(nra);
                 }
                 
                 // gestion des files de priorité
-                if (petitVoisin){ //(s'il est petit maintenant, a fortiori il l'était au départ)
+                if (petitVoisin){ // la mise a jour de la file de priorite du NRA "voisin" est n'est pas necessaire s'il depassait deja le seuil minimal de lignes
                     switch(collecte.edgesOf(voisin).size()){
                         case 0: // donc 1 juste avant
                            faciles.remove(voisin);
@@ -677,29 +683,14 @@ public class ReseauCuivre {
     private void regroupeMultiVoisins(SimpleWeightedGraph<NRA, DefaultWeightedEdge> collecte, KDTree<NRA> indexCollecte, PriorityQueue<NRA> faciles, PriorityQueue<NRA> deuxiemes, PriorityQueue<NRA> isoles){
         while (!deuxiemes.isEmpty()){
 
-            /*System.out.println("Taille des piles lors de l'entrée dans la boucle multivoisins");
-            System.out.println("Un voisin : "+faciles.size());
-            System.out.println("Plusieurs voisins : "+deuxiemes.size());
-            System.out.println("Aucun voisin : "+isoles.size());
-            
-            System.out.println("Impression du graphe");
-            for (NRA nra1 : collecte.vertexSet()){
-                System.out.print("NRA "+nra1.identifiant+", voisins :");
-                for (DefaultWeightedEdge arete : collecte.edgesOf(nra1)){
-                    NRA voisin = getVoisin(collecte, nra1, arete);
-                    System.out.print(" - "+voisin.identifiant);
-                }
-                System.out.println();
-            }*/
-            
-            // on traite les "faciles" qui traînent (aucun lors du premier passage)
+            // on traite les NRA dits "faciles" qui sont créés lors du traitement de NRA à plusieurs voisins (aucun lors du premier passage)
             regroupeMonoVoisin(collecte, indexCollecte, faciles, deuxiemes, isoles); 
 
             NRA nra = deuxiemes.poll();
-            if (nra != null){ // si jamais l'action de regroupeMonoVoisin a vidé "deuxiemes"
+            if (nra != null){ // utile dans le cas où l'action de regroupeMonoVoisin a vidé "deuxiemes"
                 System.out.println("NRA "+nra.identifiant+" de "+nra.podi()+" lignes");
                 Set<DefaultWeightedEdge> liens = collecte.edgesOf(nra); // au moins deux éléments dans cet ensemble
-                System.out.println("Test : l'ensemble des arêtes du nra a "+liens.size()+" éléments.");
+                System.out.println("Test : l'ensemble des arétes du nra a "+liens.size()+" éléments.");
 
                 // sélection du "plus proche voisin"
                 Iterator<DefaultWeightedEdge> iterator = liens.iterator();
@@ -708,40 +699,39 @@ public class ReseauCuivre {
                 while (iterator.hasNext()){
                     DefaultWeightedEdge candidat = iterator.next();
                     double d = collecte.getEdgeWeight(candidat);
-                    if (d < distance){
+                    if (d < distance){ // le candidat pour regroupeur est le NRA le plus "proche" du NRA à regrouper dans le graphe de collecte
                         distance = d;
                         e = candidat;
                     }
                 }
-
-                // on se regroupe avec le voisin le + proche dans le réseau de collecte s'il est assez proche
-                if (distance <= distMaxNRONRA){
-
-
+                double distancemaxNRAregroupes = nra.distancemaxNRAregroupes + distance;
+                System.out.println("Distance au NRA candidat : " + distance);
+                System.out.println("Distance max de regroupement NRA courant: " + nra.distancemaxNRAregroupes);
+                System.out.println("Distance maximum éventuelle : " + distancemaxNRAregroupes);
+                if (distancemaxNRAregroupes <= distMaxNRONRA){ // on effectue le regroupement si la distance maximum en aval du NRA candidat est inferieure au seuil fixe par l'utilisateur
                     NRA voisin = getVoisin(collecte, nra, e);
-                    boolean petitVoisin = voisin.podi() < nbLignesMinNRO; // utile plus tard
-                    voisin.regrouper(nra);
+                    boolean petitVoisin = voisin.podi() < nbLignesMinNRO; // utile pour la mise a jour des files de priorites
+                    voisin.regrouper(nra, distancemaxNRAregroupes);
                     System.out.println("Voisin choisi : "+voisin.identifiant);
-
-                    // avant de supprimer nra du graphe, il faut transfèrer les autres voisins de nra à "voisin"; attention au cas particulier des "triangles"
+                    System.out.println("Nouvelle distance maximum de regroupement : " + distancemaxNRAregroupes);
+                    // avant de supprimer nra du graphe, il faut transférer les autres voisins de nra "voisin"; attention au cas particulier des "triangles"
                     for (DefaultWeightedEdge lien : liens){
                         if (!lien.equals(e)){
                             NRA v = getVoisin(collecte, nra, lien);
                             if (collecte.containsEdge(voisin, v)){ // cas du triangle -> possibilité de rendre des NRA "faciles"
                                 if (v.podi() < nbLignesMinNRO && collecte.edgesOf(v).size() == 2){ // on n'a pas encore supprimé "nra" du graphe 
                                     faciles.add(v);
-                                    deuxiemes.remove(v);
+                                    deuxiemes.remove(v); //on conservera seulement l'arete entre v et voisin (pas d'ajout d'arete v-voisin en passant par nra)
                                 }
-                                //System.out.println("Boolean petitVosin :"+petitVoisin);
-                                if (petitVoisin){
+                                if (petitVoisin){ //mise a jour des files dans le cas particulier dit du "triangle"
                                     if (liens.size() == 2 && collecte.edgesOf(voisin).size() == 2){
                                         deuxiemes.remove(voisin);
-                                        petitVoisin = false; // pour ne pas répéter l'opération plus bas si on l'a déjà faite
+                                        petitVoisin = false; // pour ne pas répéter l'opération plus bas si on l'a déja effectuée
                                         if (voisin.podi() < nbLignesMinNRO)
                                             faciles.add(voisin);
                                     }
                                 }
-                            } else // tout va bien
+                            } else // cas général hors cas du "triangle"
                                 collecte.setEdgeWeight(collecte.addEdge(voisin, v), distance + collecte.getEdgeWeight(lien));
                         }
                     }
@@ -759,8 +749,8 @@ public class ReseauCuivre {
                     if (petitVoisin && voisin.podi() >= nbLignesMinNRO)
                         deuxiemes.remove(voisin);
                 } else{
-                    // pas de problème de triangle car on supprime purement et simplement les liens, et les podi des voisins n'ont pas changé non plus
-                    // par définition les voisins n'étaient ni isolés ni à un voisin puisque faciles est vide
+                    // pas de probleme de triangle car on supprime purement et simplement les liens, et les podi des voisins n'ont pas changé non plus
+                    // par définition les voisins n'étaient ni isolés ni a un voisin puisque faciles est vide
                     Iterator<DefaultWeightedEdge> iter = (new ArrayList<>(liens)).iterator();
                     DefaultWeightedEdge lien;
                     while(iter.hasNext()){
@@ -790,21 +780,25 @@ public class ReseauCuivre {
                 if (indexCollecte.size() > 0){
                     NRA voisin = indexCollecte.nearest(coord);
                     double distance = nra.distance(voisin);
-                    if (distance <= distMaxNRONRA){
+                    double distancemaxNRAregroupes = nra.distancemaxNRAregroupes + distance;
+                System.out.println("Distance au NRA voisin à vol d'oiseau : " + distance);
+                System.out.println("Distance max de regroupement NRA courant : " + nra.distancemaxNRAregroupes);
+                System.out.println("Distance maximum éventuelle : " + distancemaxNRAregroupes);
+                    if (distancemaxNRAregroupes <= distMaxNRONRA){ // on effectue le regroupement si la distance maximum en aval est inferieure au seuil fixe par l'utilisateur
                         // on supprime du graphe  et on regroupe avec le plus proche géographiquement
                         collecte.removeVertex(nra);
                         boolean petitVoisin = voisin.podi() < nbLignesMinNRO; // utile + tard
-                        voisin.regrouper(nra);
-
+                        voisin.regrouper(nra, distancemaxNRAregroupes);
+                    System.out.println("Nouvelle distance maximum de regroupement : " + distancemaxNRAregroupes);
                         // gestion de la file de priorité "isolés"
                         if (petitVoisin){ // alors nécessairement faisait partie de "isolés"
                             isoles.remove(voisin);
                             if (voisin.podi() < nbLignesMinNRO)
-                                isoles.add(voisin); // on le remet à la bonne place éventuellement
+                                isoles.add(voisin); // s'il n'a toujours pas dépassé le seuil on le remet dans la liste
                         }
                     }
                 }
-                // si non regroupé, reste dans le graphe et sera regroupé avec lui-même à la fin
+                // si non regroupé, reste dans le graphe et sera regroupé avec lui-méme a la fin
             }
         }catch (Exception e){
             e.printStackTrace();
@@ -812,7 +806,7 @@ public class ReseauCuivre {
     }
     
     private NRA getVoisin(Graph<NRA,DefaultWeightedEdge> graph, NRA nra, DefaultWeightedEdge edge){
-        // on est dans un graphe non orienté
+        // le graphe est non-orienté
         NRA voisin = graph.getEdgeSource(edge);
         if (voisin.equals(nra))
             voisin = graph.getEdgeTarget(edge);
@@ -845,7 +839,7 @@ public class ReseauCuivre {
                 dir = new File(dir+"/"+dossier+"_"+dpt+"/"+dossier+"_"+dpt+"_"+zone);
                 dir.mkdirs();
                 PrintWriter csv = new PrintWriter(dir.getPath()+"/"+dir.getName()+".csv");
-                csv.println("NRO;NRA;Type;X;Y");
+                csv.println("NRO;NRA;Type;X;Y;distancemaxregroupement");
                 for (NRA nro : listeNRO.get(zone)) {
                     for (NRA nra : nro.listeNRAduNRO) {
                         csv.print(nro.identifiant + ";" + nra.identifiant);
@@ -854,7 +848,8 @@ public class ReseauCuivre {
                         } else {
                             csv.print(";NRA;");
                         }
-                        csv.println(nra.x + ";" + nra.y);
+                        
+                        csv.println(nra.x + ";" + nra.y + ";" + Math.round(nra.distancemaxNRAregroupes));
                         for (String codeNRA : nra.getNRAComplementaires()){
                             csv.println(nro.identifiant + ";" + codeNRA+";NRA;"+nra.x+";"+nra.y);
                         }
@@ -875,11 +870,11 @@ public class ReseauCuivre {
         }
     }
 
-    public List<String> getAnalyseNRO(){
+    public List<String> getAnalyseNRO(){ // methode permettant la création du fichier de synthese d'analyse des NRO
         List<String> res = new ArrayList<>();
         for (String zone : listeNRO.keySet()){
             for (NRA nro : listeNRO.get(zone)){
-                String analyse = zone+";"+nro.identifiant+";";
+                String analyse = zone+";"+nro.identifiant;
                 int nbNRA = 0;
                 int nbNRAComplementaires = 0;
                 int nbSR = 0;
@@ -897,7 +892,7 @@ public class ReseauCuivre {
         return res;
     }
     
-    private void verificationInterZone(){
+    private void verificationInterZone(){ // traitement complementaire après le traitement des trois files de priorité pour les proto-NRO dont le nombre de lignes est en dessous du seuil 
         for (String zone : this.listeNRO.keySet()){
             List<NRA> newListeNRO = new ArrayList<>(this.listeNRO.get(zone));
             ListIterator<NRA> iterator = newListeNRO.listIterator();
@@ -907,11 +902,11 @@ public class ReseauCuivre {
                 NRA nouveauNRO = null;
                 if (nro.podi() < nbLignesMinNRO){
                     int podiMax = nro.podi();
-                    for (String autreZone : this.listeNRA.keySet()){
+                    for (String autreZone : this.listeNRA.keySet()){ // on cherche s'il existe un NRA portant le même code dans une zone différente
                         if (!autreZone.equals(zone) && listeNRA.get(autreZone).containsKey(nro.identifiant)){
-                            NRA nraEquiv = listeNRA.get(autreZone).get(nro.identifiant);
+                            NRA nraEquiv = listeNRA.get(autreZone).get(nro.identifiant); // on recherche les NRO d'une autre zone qui auraient regroupé un NRA de même code
                             for (NRA nroAutre : listeNRO.get(autreZone)){
-                                if (nroAutre.hasNRA(nraEquiv) && nroAutre.podi() > podiMax){
+                                if (nroAutre.hasNRA(nraEquiv) && nroAutre.podi() > podiMax){ // on considère en tant que NRO parmi ceux ayant regroupé un NRA de même code celui qui a le plus grand PODI
                                     podiMax = nroAutre.podi();
                                     nouveauNRO = nroAutre;
                                     System.out.println("Nouveau NRO trouvé !");
@@ -920,12 +915,12 @@ public class ReseauCuivre {
                             }
                         }
                     }
-                    if (nouveauNRO!=null){
+                    if (nouveauNRO!=null){ // si on en a trouvé un, on va effectuer un rattachement des lignes
                         System.out.println("Le NRA "+nro.identifiant+" en zone "+zone+" n'est plus NRO et se rattache désormais au NRO "+nouveauNRO.identifiant+" de la zone "+nouveauNRO.zone);
                         iterator.remove();
-                        Set<NRA> liberes = nro.libereNRAMultiples(listeNRA);
+                        Set<NRA> liberes = nro.libereNRAMultiples(listeNRA); // les NRA déjà regroupés par le proto-NRO qui existait étaient forcement eux aussi en dessous du seuil de lignes et on doit donc les libérer de ce proto-NRO afin ensuite d'analyser si pour ces NRA il existe un NRO de même code dans une autre zone
                         liberes.remove(nro);
-                        for (NRA nra : liberes){
+                        for (NRA nra : liberes){ 
                             iterator.add(nra);
                             iterator.previous();
                         }
@@ -960,7 +955,7 @@ public class ReseauCuivre {
         }
     }
     
-    class Comparateur implements Comparator<NRA> {
+    class Comparateur implements Comparator<NRA> { // permet le maintien du tri à l'intérieur de chaque file de priorité pour le regroupement
 
         @Override
         public int compare(NRA o1, NRA o2) {

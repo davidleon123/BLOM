@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Autorité de régulation des communications électroniques et des postes
+ * Copyright (c) 2020, Autorité de régulation des communications électroniques, des postes et de la distribution de la presse
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,18 +31,22 @@ import javax.swing.UIManager;
 import org.geotools.referencing.CRS;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import java.util.Random;
 
 public class Main {
     
-    /// 5 lignes à modifier par l'utilisateur ///
-    public static String cheminReseau = "Q:/Modele FttH v2/files/"; // choisissez un emplacement où seront stockés tous les fichiers intermédiaires
-    // localisation et radical des noms de shapefiles de GC - on s'attend à des fichiers de la forme adresseShapesGC/dpt/nameShapeGC_dpt.shp
-    static String adresseShapesGC = "C:/Inputs/GC2";
-    static String nameShapeGC = "GVIFR_ARC_in_DEPT";
-    // localisation et radical des noms de shapefiles du réseau routier - on s'attend à des fichiers de la forme adresseShapesRoutes/dpt/nameShapeRoutes_dpt.shp
-    static String adresseShapesRoutes = "C:/Inputs/Routes";
-    static String nameShapeRoutes = "ROUTE";
-    ////////////////////////////////////////////
+    // Déclaration des chemins statiques (utilisés dans plusieurs méthodes ici)
+    public static String cheminReseau;
+    
+    // localisation et radical des noms de shapefiles de GC
+    static String adresseShapesGC;
+    static String nameShapeGC;
+    
+    static int seed = 0;
+    
+    // localisation et radical des noms de shapefiles du réseau routier
+    static String adresseShapesRoutes;
+    static String nameShapeRoutes;
     
     private static CoordinateReferenceSystem crsLambertIIEtendu;
     private static CoordinateReferenceSystem crsLambert93;
@@ -50,6 +54,10 @@ public class Main {
     private static CoordinateReferenceSystem crsGuyane;
     private static CoordinateReferenceSystem crsReunion;
     private static Map<String, String> nomDepartements;
+    
+    public static Random PRNG = new Random();
+    
+    private static boolean crsSortieLambertIIEtendu;
 
     public static void main(String[] args) {
         try {
@@ -60,55 +68,93 @@ public class Main {
         
         initCRS();
         initNomsDepartements();
-        
-        /// Une vingtaine de lignes à modifier par l'utilisateur ///
-        
-        // (facultatif) choisissez un emplacement commun des fichiers d'entrée hors exceptions de grande taille à placer sur un disque local
-        String inputFiles = "Q:/Modele FttH v2/inputs/";
 
-        // fichiers réseau cuivre (dont les fichiers SDA des LP, SR, liens de collecte)
-        // les 4 fichiers sont chaucn pour l'ensemble des départements
-        String adresseLP = "C:/Inputs/LP 2016T1/Lignes principales en ND banalises.csv";
-        String adresseSR = inputFiles+"listeSR.txt";
-        String adresseNRA = inputFiles+"listeNRA.csv";
-        String adresseCollecte = inputFiles+"liens_collecte_fibre.csv";
+        
+        // Lecture des chemins des fichiers d'entrée
+        IniReader ini = new IniReader("BLOM.ini");
+        
+        // Initialisation du chemin de la racine des fichiers intermédiaires
+        cheminReseau = ini.getVal("cheminReseau");
+        
+        // Initialisation du chemin des fichiers d'entrée de grande taille
+        adresseShapesGC = ini.getVal("adresseShapesGC");
+        nameShapeGC = ini.getVal("nameShapeGC");
+        adresseShapesRoutes = ini.getVal("adresseShapesRoutes");
+        nameShapeRoutes = ini.getVal("nameShapeRoutes");
+        
+        // Emplacement commun des fichiers d'entrée hors exceptions de grande taille à placer sur un disque local
+        String inputFiles = ini.getVal("inputFiles");
+        
+        // fichiers décrivant le réseau cuivre
+        // Chacun des 4 fichiers couvre le territoire national (tous les départements)
+        String adresseLP = ini.getVal("adresseLP");
+        String adresseSR = inputFiles+ini.getVal("fichierSR");
+        String adresseNRA = inputFiles+ini.getVal("fichierNRA");
+        String adresseCollecte = inputFiles+ini.getVal("fichierCollecte");
         String[] fichiersCuivre = new String[]{adresseLP, adresseSR, adresseNRA, adresseCollecte};
         
        // shapefiles des départements et liste des départements voisins
-        String adresseDptsLimitrophes = inputFiles+"liste-de-departements-limitrophes-francais.txt";
-        String adresseShapesDptsMetro = inputFiles+"Dpts/FranceMetro";
-        String shape971 = inputFiles+"Dpts/971";
-        String shape972 = inputFiles+"Dpts/972";
-        String shape973 = inputFiles+"Dpts/973";
-        String shape974 = inputFiles+"Dpts/974";
-        String shape976 = inputFiles+"Dpts/976";
+        String adresseDptsLimitrophes = inputFiles+ini.getVal("fichierDeptLimitrophes");
+        String adresseShapesDptsMetro = inputFiles+ini.getVal("adresseShapesDpts")+"FranceMetro"; 
+        String shape971 = inputFiles+ini.getVal("adresseShapesDpts")+"971";
+        String shape972 = inputFiles+ini.getVal("adresseShapesDpts")+"972";
+        String shape973 = inputFiles+ini.getVal("adresseShapesDpts")+"973";
+        String shape974 = inputFiles+ini.getVal("adresseShapesDpts")+"974";
+        String shape976 = inputFiles+ini.getVal("adresseShapesDpts")+"976";
         String[] shapesDOM = new String[]{shape971, shape972, shape973, shape974, shape976};
-        String nameShapeDpts = "DEPARTEMENT";
-        // les attributs 2 et 3 doivent correspondr aux code et nom du département
+        String nameShapeDpts = ini.getVal("nameShapeDpts");
+        // les attributs 2 et 3 doivent correspondre aux codex et aux noms du département
         
-        // pour donner une zone (ZTD_HD, ZTD_BD, ZMD_AMII, ZMD_RIP) à chaque PC/noeud du réseau
-        String adresseShapeZTD = inputFiles+"ZTD/ztd.shp";
+        // fichiers de forme décrivant les zones de régulation (ZTD_HD, ZTD_BD, ZMD_AMII, ZMD_RIP) afin d'affecter une zone à chaque PC/noeud du réseau
+        String adresseShapeZTD = inputFiles+ini.getVal("fichierShapeZTD");
         // on s'attend à un shapefile avec un objet identifié "PHD" et un objet identifié "PBD" (attribut 1) qui définissent les deux sous-zones de la ZTD
-        String adresseShapeAMII = inputFiles+"AMII/amii.shp";
+        String adresseShapeAMII = inputFiles+ini.getVal("fichierShapeAMII");
         // les deux premiers caractères de l'attribut 1 doivent correspondent au département
-        String dossierCommunes = inputFiles+"Communes"; // dossier contenant Communes_01.csv, Communes_02.csv, etc avec la zone ("ZTD, "AMII" ou "RIP") de chaque code géo INSEE
+        String dossierCommunes = inputFiles+ini.getVal("nomDossierCommunes"); // dossier contenant Communes_01.csv, Communes_02.csv, etc avec la zone de régulation ("ZTD, "AMII" ou "RIP") associée à commune (identifiée par son code INSEE)
         String[] fichiersZonage = new String[]{adresseShapeZTD, adresseShapeAMII, dossierCommunes};
         
         // les deux entrées du module de déploiement
         // les demandes des différents fichiers seront sommées au moment de l'initalisation
-        String fichierDemandeCible1 = inputFiles+"demande-logements-2014.csv";
-        String fichierDemandeCible2 = inputFiles+"demande-etablissements-2014.csv";
+        String fichierDemandeCible1 = inputFiles+ini.getVal("fichierDemandeCible1");
+        String fichierDemandeCible2 = inputFiles+ini.getVal("fichierDemandeCible2");
         //String ficherDemandeCible3 = ...
         //...
-        String[] demandeCible = new String[]{fichierDemandeCible1, fichierDemandeCible2}; // à modifier le cas échéant
+        String[] demandeCible = new String[]{fichierDemandeCible1, fichierDemandeCible2};
         
-        // le fichier immeuble issu de la base propriétaire du CEREMA est SDA 
-        String fichierImmeubles = inputFiles+ "immeubles.csv";
+        // le fichier décrivant la distribution du nombre de locaux par immeuble, issu de la base propriétaire du CEREMA ici
+        String fichierImmeubles = inputFiles+ ini.getVal("fichierImmeubles");
         
-        // le fichier de coûts unitaires (non utilisé dans la version actuelle)
-        String fichierCoutsUnitaires = inputFiles+"CU_Standard.csv";
+        // le fichier de coûts unitaires (il n'est pas utilisé dans cette version)
+        String fichierCoutsUnitaires = inputFiles+ini.getVal("fichierCoutsUnitaires");
         
-        String racineResultats = "Q:/Modele FttH v2/Resultats"; // à renseigner par l'utilisateur
+        // Chemin du répertoire où seront écrits les résultats
+        String racineResultats = ini.getVal("racineResultats");
+        
+        // mise en place d'un seed pour le générateur de nombres pseudo-aléatoires
+        seed = Integer.parseInt(ini.getVal("seed"));
+        if (seed > 0) {
+            PRNG = new Random(seed);
+        }
+        
+        // option permettant de tracer les fichiers de forme en sortie dans le SCR Lambert II Etendu pour la
+        // France métropolitaine (par défaut le SCR est Lambert 93)
+        crsSortieLambertIIEtendu = false;
+        if (ini.getVal("CRS_Sortie") != null) {
+            if(!ini.getVal("CRS_Sortie").contains("93")) crsSortieLambertIIEtendu = true;
+        }
+        
+        // Pondérations par défaut pour le tracé du réseau
+        HashMap<String, Double> parametresReseau = new HashMap<>();
+        parametresReseau.put("facteurConduite", 1.0);
+        parametresReseau.put("facteurAerien", 1.0);
+        parametresReseau.put("facteurPleineTerre", 1.0);
+        
+        if (ini.getVal("facteurConduite") != null) parametresReseau.replace("facteurConduite", Double.valueOf(ini.getVal("facteurConduite")));
+        if (ini.getVal("facteurAerien") != null) parametresReseau.replace("facteurAerien", Double.valueOf(ini.getVal("facteurAerien")));
+        if (ini.getVal("facteurPleineTerre") != null) parametresReseau.replace("facteurPleineTerre", Double.valueOf(ini.getVal("facteurPleineTerre")));
+        
+        parametresReseau.put("facteurVdO", Math.sqrt(2));
+        if (ini.getVal("facteurVdO") != null) parametresReseau.replace("facteurVdO", Double.valueOf(ini.getVal("facteurVdO")));
         
         ////////////////////////////////////////////////
                 
@@ -117,15 +163,17 @@ public class Main {
                 adresseDptsLimitrophes, adresseShapesDptsMetro, shapesDOM, nameShapeDpts,
                 fichiersZonage,
                 demandeCible, fichierImmeubles,
-                fichierCoutsUnitaires, racineResultats);
+                fichierCoutsUnitaires, racineResultats, parametresReseau);
     }
     
     public static String getShapefileReseau(String type, String dpt){
         switch(type){
             case "GC":
-                return adresseShapesGC+"/"+dpt+"/"+nameShapeGC+"_"+dpt+".shp";
+                return adresseShapesGC + nameShapeGC.replace("[dpt]", dpt) + ".shp";
+                //return adresseShapesGC+"/"+dpt+"/"+nameShapeGC+"_"+dpt+".shp";
             case "routier":
-                return adresseShapesRoutes+"/"+dpt+"/"+nameShapeRoutes+"_"+dpt+".shp";
+                return adresseShapesRoutes + nameShapeRoutes.replace("[dpt]", dpt) + ".shp";
+                //return adresseShapesRoutes+"/"+dpt+"/"+nameShapeRoutes+"_"+dpt+".shp";
             default:
                 return "ERROR!";
         }
@@ -183,7 +231,7 @@ public class Main {
         }
     }
     
-    public static CoordinateReferenceSystem getCRS(String dpt, boolean lambert2Etendu){
+    public static CoordinateReferenceSystem getCRS(String dpt){
         switch(dpt){
             case "971":
             case "972":
@@ -193,7 +241,7 @@ public class Main {
             case "974":
                 return crsReunion;
             default:
-                if (lambert2Etendu) return crsLambertIIEtendu;
+                if (crsSortieLambertIIEtendu) return crsLambertIIEtendu;
                 else return crsLambert93;
         }
     }

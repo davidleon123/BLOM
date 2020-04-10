@@ -1,0 +1,11 @@
+﻿/lib
+BLOM.ini
+
+*.log
+
+# Ignorer le fichier de projet NetBeans
+build.xml
+manifest.mf
+/nbproject/
+/build/
+/dist/
