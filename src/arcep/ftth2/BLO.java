@@ -185,7 +185,17 @@ public class BLO {
             System.out.println("LongueurP finale : "+longueurParcourue);
             System.out.println("Niveau de la racine : "+niveauRoot);
         } else {
-            root.setModesPose();
+            
+            String modeReconstrGCTransport = parametres.modeReconstrGCTransport;
+            String modeReconstrCDistrib = parametres.modeReconstrGCDistrib;
+            
+            if(modeReconstrGCTransport == "Tout reconstruire en souterrain") {
+                root.setModesPose(false, true, (modeReconstrCDistrib=="En aérien"));
+                System.out.println("Forçage en souterrain de l'aérien");
+            } else {
+                root.setModesPose((modeReconstrGCTransport=="En aérien"), false, (modeReconstrCDistrib=="En aérien"));
+            }
+            //root.setModesPose();
         }
     }
 

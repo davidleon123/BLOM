@@ -50,13 +50,6 @@ public class IniReader {
         }
     }
     
-//    public static void main(String args[]) {
-//        IniReader ir = new IniReader("Blod.ini");
-//        //ir.readIni();
-//        System.out.println(ir.getVal("df_results_path"));
-//        System.out.println(ir.getVal("df_data_path"));
-//    }
-//    
     public Properties getIni() {
         return ini;
     }

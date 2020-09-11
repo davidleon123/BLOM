@@ -275,8 +275,8 @@ public class Parametres {
     
     public void setCoupleurs(){
         this.nbLignesParCoupleurPMExt = 32;
-        this.nbLignesParCoupleurPMint = 8;
-        this.nbLignesParCoupleurNRO = 2; // coupleurs 2*2
+        this.nbLignesParCoupleurPMint = 8; 
+        this.nbLignesParCoupleurNRO =2; // coupleurs 2*2 
 
         this.nbCoupleursParTiroirsPMExt = 4;
         this.nbCoupleursParTiroirsPMint = 4;
@@ -313,6 +313,14 @@ public class Parametres {
 
     public void setGC(double partReconstrPTAerien){
         this.partReconstrPTAerien = partReconstrPTAerien;
+    }
+    
+    String modeReconstrGCTransport;
+    String modeReconstrGCDistrib;
+    
+    public void setModeReconstructionGC(String modeReconstrGCTransport, String modeReconstrGCDistrib){
+        this.modeReconstrGCTransport = modeReconstrGCTransport;
+        this.modeReconstrGCDistrib = modeReconstrGCDistrib;
     }
     
     int nbFibresParTiroir;
@@ -492,7 +500,9 @@ public class Parametres {
             writer.println();
             writer.println("4. Dimensionnement des câbles et boîtiers d'épissurage");
             writer.println();
-            writer.println("Part de GC pleine terre reconstruit en aérien                              : "+this.partReconstrPTAerien);
+            //writer.println("Part de GC pleine terre reconstruit en aérien                              : "+this.partReconstrPTAerien);
+            writer.println("Mode de reconstruction du GC portant du transport               : " + this.modeReconstrGCTransport);
+            writer.println("Mode de reconstruction du GC ne portant que de la distribution  : " + this.modeReconstrGCDistrib);
             writer.println("Pas de paramètre exogène de reconstruction de la conduite ou de la pleine terre");
             writer.println("Facteur appliqué aux longueurs réseau pour obtenir les longueurs de câbles : " + this.longFibreSupp);
             writer.println();

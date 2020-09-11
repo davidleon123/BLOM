@@ -423,6 +423,50 @@ public class AreteBLOM extends Arete {
     }
     
     /**
+     *  Fonction récursive permettant l'attribution de mode de pose de sortie pour le GC,
+     *  d'après le mode de pose d'entrée lorsqu'il est utilisable directement, et d'après
+     *  les options choisies par l'utilisateur (distinction entre transport et distribution)
+     *  lorsqu'il est reconstruit
+     * 
+     * @param recTaer (boolean) le GC à reconstruire l'est en aérien s'il porte 
+     *          des fibres de transport. Si faux, il est reconstruit en souterrain.
+     * @param forceTsout (boolean) le GC portant du transport est reconstruit en souterrain
+     *          lorsqu'il est à reconstruire ou bien lorsqu'il est existant mais aérien.
+     *          Prend le pas sur recTaer (si forceTsout est à vrai, les arêtes de GC à
+     *          reconstruire le seront en souterrain même si recTaer est vrai.
+     * @param recDaer (boolean) le GC ne portant pas de transport (distribution uniquement)
+     *          est reconstruit en aérien. Si faux, il est reconstruit en souterrain.
+     */
+    public void setModesPose(boolean recTaer, boolean forceTsout, boolean recDaer){
+        
+        if (this.hasNonMutu){
+            if (this.modePose <= 2) {
+                if (forceTsout) this.modePoseSortie = 3;    // reconstruction en souterrain
+                else this.modePoseSortie = 0;               // aérien existant
+            } else if (this.modePose == 3 || (this.modePose >= 5 && this.modePose <= 10)) {
+                this.modePoseSortie = 2;                    // GC souterrain existant
+            } else {
+                if (recTaer && !forceTsout) this.modePoseSortie = 1;       // reconstruction en aérien
+                else this.modePoseSortie = 3;               // reconstruction en souterrain
+            }
+        } else {
+            if (this.modePose <= 2) {
+                this.modePoseSortie = 0;                    // GC aérien existant
+            } else if (this.modePose == 3 || (this.modePose >= 5 && this.modePose <= 10)) {
+                this.modePoseSortie = 2;                    // GC souterrain existant
+            } else {
+                if (recDaer) this.modePoseSortie = 1;       // reconstruction en aérien
+                else this.modePoseSortie = 3;               // reconstruction en souterrain
+            }
+        }
+        
+        // Récursion
+        for (AreteBLOM a : this.filles){
+            a.setModesPose(recTaer, forceTsout, recDaer);
+        }
+    }
+    
+    /**
      * Fonction récursive permettant l'attribution de mode de pose de sortie pour le GC,
      *  - d'après le mode de pose d'entrée lorsqu'il est utilisable directement,
      *  - et par coloriage lorsqu'il est reconstruit

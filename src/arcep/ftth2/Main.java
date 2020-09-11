@@ -85,8 +85,10 @@ public class Main {
         // Emplacement commun des fichiers d'entrée hors exceptions de grande taille à placer sur un disque local
         String inputFiles = ini.getVal("inputFiles");
         
-        // fichiers décrivant le réseau cuivre
-        // Chacun des 4 fichiers couvre le territoire national (tous les départements)
+
+        // fichiers décrivant le réseau cuivre (dont les fichiers des LP, des SR et des liens de collecte)
+        // les 4 fichiers rassemblent chacun l'information pour l'ensemble des départements du territoire national
+
         String adresseLP = ini.getVal("adresseLP");
         String adresseSR = inputFiles+ini.getVal("fichierSR");
         String adresseNRA = inputFiles+ini.getVal("fichierNRA");
@@ -103,23 +105,26 @@ public class Main {
         String shape976 = inputFiles+ini.getVal("adresseShapesDpts")+"976";
         String[] shapesDOM = new String[]{shape971, shape972, shape973, shape974, shape976};
         String nameShapeDpts = ini.getVal("nameShapeDpts");
-        // les attributs 2 et 3 doivent correspondre aux codex et aux noms du département
+
+        // les attributs 2 et 3 doivent correspondre aux codes et aux noms du département
         
-        // fichiers de forme décrivant les zones de régulation (ZTD_HD, ZTD_BD, ZMD_AMII, ZMD_RIP) afin d'affecter une zone à chaque PC/noeud du réseau
+        // Fichiers de forme décrivant les zones de régulation (ZTD_HD, ZTD_BD, ZMD_AMII, ZMD_RIP) afin d'affecter une zone à chaque PC/noeud du réseau
         String adresseShapeZTD = inputFiles+ini.getVal("fichierShapeZTD");
         // on s'attend à un shapefile avec un objet identifié "PHD" et un objet identifié "PBD" (attribut 1) qui définissent les deux sous-zones de la ZTD
         String adresseShapeAMII = inputFiles+ini.getVal("fichierShapeAMII");
-        // les deux premiers caractères de l'attribut 1 doivent correspondent au département
-        String dossierCommunes = inputFiles+ini.getVal("nomDossierCommunes"); // dossier contenant Communes_01.csv, Communes_02.csv, etc avec la zone de régulation ("ZTD, "AMII" ou "RIP") associée à commune (identifiée par son code INSEE)
+        // les deux premiers caractères de l'attribut 1 doivent correspondre au département
+        String dossierCommunes = inputFiles+ini.getVal("nomDossierCommunes"); // dossier contenant Communes_01.csv, Communes_02.csv, etc avec la zone ("ZTD, "AMII" ou "RIP") associée à chaque commune (identifiée par son code INSEE)
+
         String[] fichiersZonage = new String[]{adresseShapeZTD, adresseShapeAMII, dossierCommunes};
         
         // les deux entrées du module de déploiement
-        // les demandes des différents fichiers seront sommées au moment de l'initalisation
+        // les demandes des différents fichiers seront sommées au moment de l'initialisation
         String fichierDemandeCible1 = inputFiles+ini.getVal("fichierDemandeCible1");
-        String fichierDemandeCible2 = inputFiles+ini.getVal("fichierDemandeCible2");
-        //String ficherDemandeCible3 = ...
-        //...
-        String[] demandeCible = new String[]{fichierDemandeCible1, fichierDemandeCible2};
+        String[] demandeCible = new String[]{fichierDemandeCible1};
+        if (ini.getVal("fichierDemandeCible2") != null) {
+            String fichierDemandeCible2 = inputFiles+ini.getVal("fichierDemandeCible2");
+            demandeCible = new String[]{fichierDemandeCible1, fichierDemandeCible2};
+        }
         
         // le fichier décrivant la distribution du nombre de locaux par immeuble, issu de la base propriétaire du CEREMA ici
         String fichierImmeubles = inputFiles+ ini.getVal("fichierImmeubles");
@@ -170,10 +175,8 @@ public class Main {
         switch(type){
             case "GC":
                 return adresseShapesGC + nameShapeGC.replace("[dpt]", dpt) + ".shp";
-                //return adresseShapesGC+"/"+dpt+"/"+nameShapeGC+"_"+dpt+".shp";
             case "routier":
                 return adresseShapesRoutes + nameShapeRoutes.replace("[dpt]", dpt) + ".shp";
-                //return adresseShapesRoutes+"/"+dpt+"/"+nameShapeRoutes+"_"+dpt+".shp";
             default:
                 return "ERROR!";
         }

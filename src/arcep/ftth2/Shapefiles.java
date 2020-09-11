@@ -442,7 +442,6 @@ public class Shapefiles {
 
                     // on récupère les PC au bon format
                     GeometryFactory gf = new GeometryFactory(new PrecisionModel());
-                    //ReseauCuivre reseauCuivre = new ReseauCuivre(cheminReseau+adresseCuivre, dpt, true, false, null);
                     ReseauCuivre reseauCuivre = new ReseauCuivre(cheminReseau, dpt, -1, -1); // les deux derniers arguments ne sont pas utiles ici
                     reseauCuivre.loadNRA(cheminReseau+"/"+adresseNRA);
                     //reseauCuivre.loadSR(cheminReseau+"/"+adresseSR);
@@ -450,13 +449,11 @@ public class Shapefiles {
                     Map<Coordinate, String[]> listeNoeuds = new HashMap<>();
                     System.out.println("Nombre de PC en entrée de Voronoï : "+reseauCuivre.getListePC().size());
                     for (PC pc : reseauCuivre.getListePC()){
-                        //if (pc.x!=0||pc.y!=0){
                             Coordinate coordPC = new Coordinate(pc.x, pc.y);
                             if (geometry.contains(gf.createPoint(coordPC))){ 
                                 String[] codes = {pc.identifiant,pc.pere.identifiant,pc.nra};
                                 listeNoeuds.put(coordPC, codes);
                             }
-                        //}
                     }
 
                     System.out.println("Nombre de PC : "+listeNoeuds.size());

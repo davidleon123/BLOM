@@ -425,9 +425,12 @@ public class ReseauCuivre {
             System.out.println("chargement du réseau de collecte");
             this.readFichierCollecte(grapheCollecte, zone, dossierCollecte);
             
+            // version post CP1 : suppression de l'ajout initial de liens pour les NRA isolés compte tenu du fait que :
+            // - on va chercher des liens à vol d'oiseau pour les NRA isolés à l'issue des regroupements des NRA à un ou plusieurs voisins (comme en CP1)
+            // - on ne vérifie plus seulement les distances de proche en proche donc l'ajout de liens  peut conduire à empêcher un regroupement 
             // ajout de liens pour les NRA isolés
-            System.out.println("Ajout de liens pour les NRA isolés");
-            this.ajoutNRAIsoles(grapheCollecte, indexCollecte);
+            // System.out.println("Ajout de liens pour les NRA isolés");
+            //this.ajoutNRAIsoles(grapheCollecte, indexCollecte);
 
             // Tous les NRA du réseau modélisé ont été ajoutés au graphe de collecte
             for (NRA nra : grapheCollecte.vertexSet()){
@@ -568,8 +571,9 @@ public class ReseauCuivre {
                 if (codeNRA2.endsWith("E00"))
                     codeNRA2 = codeNRA2.substring(0,5) + "EOO";
                 NRA nra1 = listeNRAZone.get(codeNRA1), nra2 = listeNRAZone.get(codeNRA2);
-                if (nra1!=null && nra2!=null && !nra1.equals(nra2)){ // on ajoute le lien au graphe de collecte s'il on trouve les deux NRA dans la zone en cours de traitement et que les NRA du lien sont bien différents
-                    double distance = Parametres.arrondir(Double.parseDouble(fields[pos_distancelien]),1);
+                double distance = Parametres.arrondir(Double.parseDouble(fields[pos_distancelien]),1);
+                if (nra1!=null && nra2!=null && !nra1.equals(nra2) && distance < distMaxNRONRA){ // on ajoute le lien au graphe de collecte s'il on trouve les deux NRA dans la zone en cours de traitement, que les NRA du lien sont bien differents et que la longueur du lien est inférieure à la longueur maximum fixee (sinon placement errone dans les files de priorité)
+                    //double distance = Parametres.arrondir(Double.parseDouble(fields[pos_distancelien]),1);
                     collecte.setEdgeWeight(collecte.addEdge(nra1, nra2), distance); // creation d'une arete ponderee par la longueur du lien entre les deux NRA
                 }
 
@@ -651,8 +655,9 @@ public class ReseauCuivre {
                     collecte.removeVertex(nra);
                     double[] coord = {nra.x, nra.y};
                     indexCollecte.delete(coord);
-                } else{ // le seuil de distance ne permet pas d'effectuer le regroupement, ce NRA restera isole
+                } else{ // le seuil de distance ne permet pas d'effectuer le regroupement, ce NRA va rejoindre la file des isolés (regroupement avec des NRA assez proches à vol d'oiseau)
                     collecte.removeEdge(e);
+                    isoles.add(nra); // le NRA rejoint la file des NRA isolés (il était à regrouper au vu de son PODI mais il n'a pas été regroupé avec son voisin)
                 }
                 
                 // gestion des files de priorité
@@ -751,6 +756,7 @@ public class ReseauCuivre {
                 } else{
                     // pas de probleme de triangle car on supprime purement et simplement les liens, et les podi des voisins n'ont pas changé non plus
                     // par définition les voisins n'étaient ni isolés ni a un voisin puisque faciles est vide
+                    isoles.add(nra); // le NRA rejoint la file des NRA isolés (il était à regrouper au vu de son PODI mais il n'a pas été regroupé avec son voisin le plus proche)
                     Iterator<DefaultWeightedEdge> iter = (new ArrayList<>(liens)).iterator();
                     DefaultWeightedEdge lien;
                     while(iter.hasNext()){

@@ -47,7 +47,7 @@ public class PC extends PointReseau {
         
         //this.parcelle = parcelle;
         this.changementSR = "FAUX";
-        this.PM_int = zone.equals("ZTD_HD") && (galerieVisitable || lignes >= 12); // supprimer ligne >=12 quand ce sera pris en compte par le module Reseau
+        this.PM_int = zone.equals("ZTD_HD") && (galerieVisitable || lignes >= 12); 
     }
 
     public void combinaison(PC pr) {

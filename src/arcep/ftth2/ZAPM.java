@@ -118,7 +118,6 @@ public class ZAPM {
         return Double.NaN;
     }
     
-    // attention en cas d'évolution, la classe BLO construit aussi des features à partir du type défini par cette fonction
     public static SimpleFeatureType getPMFeatureType(CoordinateReferenceSystem crs){
         SimpleFeatureTypeBuilder builderPM = new SimpleFeatureTypeBuilder();
         builderPM.setName("PointsMutualisation");

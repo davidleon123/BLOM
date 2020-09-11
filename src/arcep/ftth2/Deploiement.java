@@ -171,9 +171,10 @@ public class Deploiement implements Runnable{
                 HashMap<String, int[]> listeImmeubles = new HashMap<>();
                 BufferedReader ficImmeubles = new BufferedReader(new FileReader(fichierImmeubles));
                 ficImmeubles.readLine(); // on passe la ligne d'en-tête
+                int nb_carac_to_select = dpt.length();
                 while ((ligne = ficImmeubles.readLine()) != null) {
                     donneesLigne = ligne.split(";");
-                    if (donneesLigne[0].substring(0, 2).equals(dpt)) {
+                    if (donneesLigne[0].substring(0, nb_carac_to_select).equals(dpt)) {
                         int[] nbImmeubles = new int[100];
 
                         for (int i = 1; i < 99; i++) {
