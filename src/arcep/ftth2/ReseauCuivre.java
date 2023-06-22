@@ -25,7 +25,7 @@
  */
 package arcep.ftth2;
 
-import edu.wlu.cs.levy.CG.*;
+import de.biomedical_imaging.edu.wlu.cs.levy.CG.*;
 import java.io.*;
 import java.util.*;
 import org.jgrapht.Graph;
@@ -89,6 +89,7 @@ public class ReseauCuivre {
                 try {indexNRA.insert(coord, nra);}
                 catch (KeyDuplicateException e){System.out.println(e+" - type : NRA");}                
             }
+            ptRes.close();
         }catch(Exception e){
             System.out.println("Exception lors de la lecture des NRA");
             System.out.println("Dpt "+dpt+"- NRA "+codeNRA);
@@ -133,6 +134,7 @@ public class ReseauCuivre {
                 }
                 listeSRinitiaux.put(codeSR, sr);              
             }
+            ptRes.close();
         }catch(Exception e){
             System.out.println("Exception lors de la lecture des SR");
             System.out.println("Dpt "+dpt+"- NRA "+codeNRA+"- SR "+codeSR);
@@ -559,7 +561,6 @@ public class ReseauCuivre {
             String line;
             String[] fields;
             Map<String, NRA> listeNRAZone = this.listeNRA.get(zone);
-            NRA nravoisin;
             int pos_distancelien = 0;
             int pos_codenra1 = 1;
             int pos_codenra2 = 2;
@@ -591,7 +592,8 @@ public class ReseauCuivre {
         }
     }
     
-    private void ajoutNRAIsoles(SimpleWeightedGraph<NRA, DefaultWeightedEdge> collecte, KDTree<NRA> indexCollecte){
+    @SuppressWarnings("unused")
+	private void ajoutNRAIsoles(SimpleWeightedGraph<NRA, DefaultWeightedEdge> collecte, KDTree<NRA> indexCollecte){
         List<NRA> restants = new ArrayList<>();
 
         for (NRA nra : collecte.vertexSet()){ // sélection des NRA isolés

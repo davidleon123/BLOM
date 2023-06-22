@@ -252,6 +252,7 @@ public class CoutsUnitaires {
                 double valeur = Double.parseDouble(donneesLigne[4].replace(",", "."));
                 initCout(id, valeur);
             }
+            ficCU.close();
         } catch (Exception e) {
             e.printStackTrace();
         }

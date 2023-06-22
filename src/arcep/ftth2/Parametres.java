@@ -31,6 +31,8 @@ import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import arcep.ftth2.configuration.Configuration;
+
 public class Parametres {
     
     public Parametres(){}
@@ -38,7 +40,7 @@ public class Parametres {
     ///// Paramètres globaux
     private final DateFormat dateFormat = new SimpleDateFormat("YYYYMMdd_HH_mm");
     Set<String> zones;
-    private final String cheminReseau = Main.cheminReseau;
+    private final String cheminReseau = Configuration.get().cheminReseau;
 
     public void setZones(boolean ztd, boolean amii, boolean rip){
         zones = new HashSet<>();
@@ -51,7 +53,7 @@ public class Parametres {
     String racineResultats;
     String terminaison; 
     
-    public void setDossierResultats(String racineResultats, boolean ztd, boolean amii, boolean rip, String trace){
+    public void setDossierResultats(String racineResultats, boolean ztd, boolean amii, boolean rip, String trace, String prefix){
         Date date = new Date();
         terminaison = dateFormat.format(date);
         if (ztd){
@@ -72,9 +74,13 @@ public class Parametres {
             }
         }
         terminaison += trace.replace("BLO", "");
-        this.racineResultats = racineResultats +"/" + terminaison;
+        this.racineResultats = racineResultats +"/" + (prefix == null ? "" : (prefix + "/"))  + terminaison;
         File dir = new File(this.racineResultats);
         dir.mkdirs();
+    }
+    
+    public void setDossierResultats(String racineResultats, boolean ztd, boolean amii, boolean rip, String trace) {
+    	setDossierResultats(racineResultats, ztd, amii, rip, trace, null);
     }
     
     private Map<String,Set<String>> listeCommunes = new HashMap<>();  
@@ -82,40 +88,45 @@ public class Parametres {
     public void setListeCommunes(String dossierCommunes, boolean listeSpeciale, String fichierListe, List<String> listeDpts){
         listeCommunes = new HashMap<>();
         try {
-            BufferedReader ficCommunes;
+            //BufferedReader ficCommunes;
             String ligne, codeINSEE, donneesLigne[];
             if(listeSpeciale){
                 String dpt;
-                ficCommunes = new BufferedReader(new FileReader(dossierCommunes+"/"+fichierListe));
-                ficCommunes.readLine();
-                while ((ligne = ficCommunes.readLine()) != null) {
-                    donneesLigne = ligne.split(";");
-                    codeINSEE = donneesLigne[0];
-                    if (codeINSEE.length() == 4)
-                        codeINSEE = "0".concat(codeINSEE);
-                    dpt = codeINSEE.substring(0, 2);
-                    if (listeCommunes.containsKey(dpt))
-                        listeCommunes.put(dpt, new HashSet<>());
-                    listeCommunes.get(dpt).add(codeINSEE);
-                }
-            }
-            else{
-                String zone;
-                File dir = new File(dossierCommunes);
-                for (String dpt : listeDpts){
-                    listeCommunes.put(dpt, new HashSet<>());
-                    ficCommunes = new BufferedReader(new FileReader(dir+"/"+dir.getName()+"_"+dpt+".csv"));
+                try(BufferedReader ficCommunes = new BufferedReader(new FileReader(dossierCommunes+"/"+fichierListe))) {
                     ficCommunes.readLine();
                     while ((ligne = ficCommunes.readLine()) != null) {
                         donneesLigne = ligne.split(";");
                         codeINSEE = donneesLigne[0];
                         if (codeINSEE.length() == 4)
                             codeINSEE = "0".concat(codeINSEE);
-                        zone = donneesLigne[1];
-                        if (!zone.equals("ZTD"))
-                            zone = "ZMD_"+zone;
-                        if (this.zones.contains(zone)) {
-                            listeCommunes.get(dpt).add(codeINSEE);
+                        dpt = codeINSEE.substring(0, 2);
+                        if (listeCommunes.containsKey(dpt))
+                            listeCommunes.put(dpt, new HashSet<>());
+                        listeCommunes.get(dpt).add(codeINSEE);
+                    }
+                }
+                
+            }
+            else{
+                String zone;
+                File dir = new File(dossierCommunes);
+                for (String dpt : listeDpts){
+                    listeCommunes.put(dpt, new HashSet<>());
+                    try(BufferedReader ficCommunes = new BufferedReader(new FileReader(dir+"/"+dir.getName()+"_"+dpt+".csv"))) {
+                        
+
+                        ficCommunes.readLine();
+                        while ((ligne = ficCommunes.readLine()) != null) {
+                            donneesLigne = ligne.split(";");
+                            codeINSEE = donneesLigne[0];
+                            if (codeINSEE.length() == 4)
+                                codeINSEE = "0".concat(codeINSEE);
+                            zone = donneesLigne[1];
+                            if (!zone.equals("ZTD"))
+                                zone = "ZMD_"+zone;
+                            if (this.zones.contains(zone)) {
+                                listeCommunes.get(dpt).add(codeINSEE);
+                            }
                         }
                     }
                 }
@@ -215,6 +226,7 @@ public class Parametres {
                     }
                 }
             }
+            reader.close();
         }catch(IOException e){
             e.printStackTrace();
         }
@@ -235,8 +247,12 @@ public class Parametres {
         this.nbMaxLignesPM_ZTD_HD = nbMaxLignesPM_ZTD_HD; 
         this.nbMaxLignesPM_ZTD_HD_int = nbMaxLignesPM_ZTD_HD_int;
     }
+    
+    public void setNbMaxLignesPBO(int nbMaxLignesPBO) {
+		this.nbMaxLignesPBO = nbMaxLignesPBO;
+	}
 
-    public int getNbMaxLignesPM(String zone){
+	public int getNbMaxLignesPM(String zone){
         switch(zone){
             case "ZMD":
                 return nbMaxLignesPM_ZMD;
@@ -476,6 +492,7 @@ public class Parametres {
             while ((s = reader.readLine()) != null){
                 writer.println(s);
             }
+            reader.close();
             writer.println();
             writer.println("2. Fichiers utilisés pour la déterminer la demande cible du réseau");
             writer.println();

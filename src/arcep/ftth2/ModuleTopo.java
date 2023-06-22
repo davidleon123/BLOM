@@ -25,8 +25,19 @@
  */
 package arcep.ftth2;
 
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import arcep.ftth2.configuration.Configuration;
+import arcep.utilitaires.monitoring.MonitoredThread;
 
 public class ModuleTopo {
     
@@ -40,7 +51,7 @@ public class ModuleTopo {
     
     public ModuleTopo(String[] fichiersCuivre, String adresseDptsLimitrophes, String adresseShapesDptsMetro, String[] shapesDOM, String nameShapeDpts,
             String[] fichiersZonage){
-        this.cheminReseau = Main.cheminReseau;
+        this.cheminReseau = Configuration.get().cheminReseau;
         this.adresseLP = fichiersCuivre[0];
         this.adresseSR = fichiersCuivre[1];
         this.adresseNRA = fichiersCuivre[2];
@@ -80,11 +91,11 @@ public class ModuleTopo {
         return dptsLimitrophes.get(dpt);
     }
 
-    public void pretraitementShapes(){
+    public Thread pretraitementShapes(){
                 
-        Thread t = new Thread() {
+    	Thread t = new MonitoredThread("Préparation shapes (départements, zonage)") {
             @Override
-            public void run() {
+            public void runTask() {
                 Shapefiles.buffer(5, adresseShapesDptsMetro, nameShapeDpts, cheminReseau+"DptsEtendus");
                 for (String shapeDOM : shapesDOM){
                     Shapefiles.buffer(5, shapeDOM, nameShapeDpts, cheminReseau+"DptsEtendus");
@@ -92,13 +103,14 @@ public class ModuleTopo {
             }
         };
         t.start();
+        return t;
     }
 
-    public void pretraitementReseauCuivre(boolean lireSR){
-        Thread t = new Thread() {
+    public Thread pretraitementReseauCuivre(boolean lireSR){
+    	Thread t = new MonitoredThread("Préparation des fichiers du réseau cuivre") {
 
             @Override
-            public void run() {
+            public void runTask() {
                 String dossierLPParDpt = filtreDpts(adresseLP);
                 //String dossierLPParDpt = "E:/Modeles/modele_BLOM/inputFiles/LP";
                 prepareNRA(adresseNRA, cheminReseau+"NRA");
@@ -112,13 +124,14 @@ public class ModuleTopo {
         };
 
         t.start();
+        return t;
     }
     
-    public void pretraitementCollecte(){
-        Thread t = new Thread() {
+    public Thread pretraitementCollecte(){
+    	Thread t = new MonitoredThread("Pré-traitement réseau de collecte") {
 
             @Override
-            public void run() {
+            public void runTask() {
                 System.out.println("Début du prétraitement de la collecte");
                 separeCollecte(adresseCollecte, cheminReseau+"Collecte");
                 System.out.println("Fin du prétraitement de la collecte");
@@ -126,13 +139,14 @@ public class ModuleTopo {
         };
 
         t.start();
+        return t;
     }
     
-    public void createZAPCSRNRA(boolean lireSR, boolean suppression){
-        Thread t = new Thread() {
+    public Thread createZAPCSRNRA(boolean lireSR, boolean suppression){
+    	Thread t = new MonitoredThread("Création des shapefiles des ZANRA") {
             
             @Override
-            public void run() {
+            public void runTask() {
                 System.out.println("Début de la création des ZANRA");
                 File f;
                 if (suppression){
@@ -163,9 +177,10 @@ public class ModuleTopo {
         };
 
         t.start();
+        return t; 
     }
     
-    public void regrouperNRANRO(List<String> listeDpts, int nbLignesMinNRO, double distMaxNRONRA, boolean lireSR){
+    public Thread regrouperNRANRO(List<String> listeDpts, int nbLignesMinNRO, double distMaxNRONRA, boolean lireSR){
         
         long start = System.currentTimeMillis();
         System.out.println("Début du regroupement des NRA en NRO");
@@ -178,10 +193,10 @@ public class ModuleTopo {
         dirNRO.mkdirs();
         File dirTestCollecte = new File(cheminReseau+"TestCollecte");
         dirTestCollecte.mkdirs();
-        Thread t = new Thread() {
+        Thread t = new MonitoredThread("Regroupement des NRA en NRO et création des shapefiles des ZANRO") {
 
             @Override
-            public void run() {
+            public void runTask() {
                 try{
                     // Création des fichiers d'analyse du réseau
                     PrintWriter cuivre = new PrintWriter(cheminReseau+"EtatInitialCuivre.csv");
@@ -238,6 +253,7 @@ public class ModuleTopo {
             e.printStackTrace();
         }
         t.start();
+        return t;
     }
     
     private String enteteAnalyse(boolean NRA, boolean lireSR){
@@ -252,21 +268,22 @@ public class ModuleTopo {
         return entete;
     }
     
-    public void traceReseau(boolean limitrophes, boolean gc, boolean routes, boolean tracerShpReseau, String nro, List<String> dptChoisis, HashMap<String, Double> parametresReseau){
-        Thread t = new Thread() {
+    public Thread traceReseau(boolean limitrophes, boolean gc, boolean routes, boolean tracerShpReseau, String nro, List<String> dptChoisis, HashMap<String, Double> parametresReseau){
+    	Thread t = new MonitoredThread("Module topo et sortie des fichiers intermédiaires \"BLO\"") {
 
             @Override
-            public void run() {
+            public void runTask() {
                 Shapefiles.preparerGraphes(dptChoisis, dptsLimitrophes, cheminReseau, "ZA"+nro, nro, "BLO", nro.replace("NRO", ""), limitrophes, gc, routes, tracerShpReseau, parametresReseau);
             }
         };
 
         t.start();
+        return t;
     }
     
     // méthodes pour le module A
     
-    private String filtreDpts(String nomFichier) {
+    protected String filtreDpts(String nomFichier) {
         File f = new File(nomFichier);
         System.out.println("Filtrage par département sur : " + nomFichier);
         
@@ -309,7 +326,7 @@ public class ModuleTopo {
     }
     
     
-    private void createPC(String origine, String destination) {
+    protected void createPC(String origine, String destination) {
         String line;
         long lignesExclues = 0;
         
@@ -319,9 +336,6 @@ public class ModuleTopo {
             newDir.mkdirs();
             String codePCSR;
             String fields[];
-            String coord_x;
-            String coord_y;
-            String pos;
             int pos_codenra = 4;
             int pos_codesr = 5;
             int pos_codepc = 6;
@@ -392,7 +406,7 @@ public class ModuleTopo {
 
     }
     
-    private void compteLignesCuivre(String origine, String destination){ // Comptage des lignes principales du reseau cuivre
+    protected void compteLignesCuivre(String origine, String destination){ // Comptage des lignes principales du reseau cuivre
         try{
             PrintWriter writer = new PrintWriter(destination);
             writer.println("Departement;ZTD;ZMD_AMII;ZMD_RIP");
@@ -436,7 +450,7 @@ public class ModuleTopo {
         
     }
 
-    private void prepareNRA(String origine, String destination){ 
+    protected void prepareNRA(String origine, String destination){ 
         Map<String, List<String>> dptNRA = litEtSepare(origine);
         File dir = new File(destination);
         dir.mkdirs();
@@ -512,6 +526,7 @@ public class ModuleTopo {
                     res.put(dpt, new ArrayList<String>());
                 res.get(dpt).add(line);
             }
+            reader.close();
         } catch (IOException e){
             System.out.println("Problème avec le fichier "+fichier);
             e.printStackTrace();
@@ -519,7 +534,7 @@ public class ModuleTopo {
         return res;
     }
     
-    private void separeCollecte(String origine, String destination){
+    protected void separeCollecte(String origine, String destination){
         Map<String, List<String>> res = new HashMap<>();
         String line, dpt1, dpt2, header, codeNRA1, codeNRA2;
         String[] fields;
@@ -550,6 +565,8 @@ public class ModuleTopo {
                     res.get(dpt2).add(line);
                 }
             }
+            reader.close();
+
             for (String dpt : res.keySet()){
                 File dir = new File(destination);
                 dir.mkdirs();

@@ -25,16 +25,22 @@
  */
 package arcep.ftth2;
 
-import org.jgrapht.graph.DefaultWeightedEdge;
-import com.vividsolutions.jts.geom.*;
 import java.io.PrintWriter;
-import java.util.*;
-import org.opengis.feature.simple.SimpleFeature;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.geotools.feature.simple.SimpleFeatureBuilder;
-import org.opengis.feature.simple.SimpleFeatureType;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
+import org.jgrapht.graph.DefaultWeightedEdge;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.MultiLineString;
+import org.opengis.feature.simple.SimpleFeature;
+import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
+@SuppressWarnings("serial")
 public class Arete extends DefaultWeightedEdge{
 
     long id;
@@ -45,17 +51,18 @@ public class Arete extends DefaultWeightedEdge{
     List<NoeudInterne> intermediaires;
     private int idN1, idN2;
     List<double[]> points;
+	public boolean dejaUtilise;
 
     public Arete(){} 
 
     public Arete(long id, int modePose){
         this.id = id;
         this.modePose = modePose;
+        dejaUtilise = ! List.of(4, 11, 12, 13, 14).contains(modePose);
     }
     
     public Arete(long id, int modePose, long idProprio, double longueur){
-        this.id = id;
-        this.modePose = modePose;
+    	this(id, modePose);
         this.idProprio = idProprio;
         this.longueur = longueur;
         this.intermediaires = new ArrayList<>();
@@ -68,10 +75,9 @@ public class Arete extends DefaultWeightedEdge{
     *   nb points (noeuds exclus) / [points : x2 / y2 / x3 / y3 etc.]
     */
     public Arete(String[] fields){
-        id = Long.parseLong(fields[0]);
+    	this(Long.parseLong(fields[0]), Integer.parseInt(fields[3]));
         idN1 = Integer.parseInt(fields[1]);
         idN2 = Integer.parseInt(fields[2]);
-        modePose = Integer.parseInt(fields[3]);
         longueur = Double.parseDouble(fields[4]);
         idProprio = Long.parseLong(fields[5]);
         points = new ArrayList<>();
@@ -79,11 +85,11 @@ public class Arete extends DefaultWeightedEdge{
             double[] coord = {Double.parseDouble(fields[i]),Double.parseDouble(fields[i+1])};
             points.add(coord);
         }
+        dejaUtilise = ! List.of(4, 11, 12, 13, 14).contains(modePose);
     }
 
     public Arete(Arete ar){
-        this.id = ar.id;
-        this.modePose = ar.modePose;
+    	this(ar.id, ar.modePose);
         this.nbLignes = ar.nbLignes;
         this.idProprio = ar.idProprio;
         this.points = ar.points;
@@ -99,7 +105,7 @@ public class Arete extends DefaultWeightedEdge{
         double distance = 0;
         for(double coord[] : intermediaires) {
             distance+=precedent.distance(coord);
-            precedent = reseau.getNoeudInterne(coord, indice, n1, n2, this, Parametres.arrondir(distance,1));
+            precedent = reseau.getNoeudInterne(coord, indice, n1, n2, this, distance);
             this.intermediaires.add((NoeudInterne) precedent);
             this.points.add(coord);
         }
@@ -218,4 +224,16 @@ public class Arete extends DefaultWeightedEdge{
         
         return featureBuilderLineaires.buildFeature(null);
     }
+
+	public int getModePose() {
+		return modePose;
+	}
+
+	public double getLongueur() {
+		return longueur;
+	}
+	
+	public long getId() {
+		return id;
+	}
 }

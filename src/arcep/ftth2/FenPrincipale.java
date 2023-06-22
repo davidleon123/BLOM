@@ -25,17 +25,35 @@
  */
 package arcep.ftth2;
 
-import java.io.*;
-import java.util.*;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
-import javax.swing.*;
-import javax.swing.table.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Vector;
+
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableModel;
+
+import arcep.ftth2.configuration.Configuration;
+import arcep.utilitaires.monitoring.MonitoredThread;
 
 
+@SuppressWarnings({"serial", "unchecked", "rawtypes"})
 public class FenPrincipale extends JFrame {
     
     private final String cheminReseau;
@@ -49,13 +67,22 @@ public class FenPrincipale extends JFrame {
     private final String fichierImmeubles, fichierCoutsUnitaires, dossierCommunes, racineResultats;
     private HashMap<String, Double> parametresReseau;
     
-    public FenPrincipale(String adresseShapesGC, String adresseShapesRoutes,
-            String[] fichiersCuivre,
-            String adresseDptsLimitrophes, String adresseShapesDptsMetro, String[] shapesDOM, String nameShapeDpts,
-            String[] fichiersZonage,
-            String[] demandeCible, String fichierImmeubles,
-            String fichierCoutsUnitaires, String racineResultats, HashMap<String, Double> parametresReseau){
-        
+    public FenPrincipale(){
+    	String adresseShapesGC = Configuration.get().adresseShapesGC;
+    	String adresseShapesRoutes = Configuration.get().adresseShapesRoutes;
+        String[] fichiersCuivre = Configuration.get().fichiersCuivre;
+        String adresseDptsLimitrophes = Configuration.get().adresseDptsLimitrophes;
+        String adresseShapesDptsMetro = Configuration.get().adresseShapesDptsMetro;
+        String[] shapesDOM = Configuration.get().shapesDOM;
+        String nameShapeDpts = Configuration.get().nameShapeDpts;
+        String[] fichiersZonage = Configuration.get().fichiersZonage;
+        String[] demandeCible = Configuration.get().demandeCible;
+        String fichierImmeubles = Configuration.get().fichierImmeubles;
+        String fichierCoutsUnitaires  = Configuration.get().fichierCoutsUnitaires;
+        String racineResultats = Configuration.get().racineResultats;
+        HashMap<String, Double> parametresReseau = Configuration.get().parametresReseau;
+    	
+    	
         //Formatage de la fenêtre
         initComponents();
         this.setTitle("Arcep - modèle de réseau BLOM pour la tarification du dégroupage");
@@ -68,7 +95,7 @@ public class FenPrincipale extends JFrame {
         jComboBox5.setSelectedItem("En aérien");
         
         // initailisation des adresses principales
-        this.cheminReseau = Main.cheminReseau;
+        this.cheminReseau = Configuration.get().cheminReseau;
         File dir = new File(cheminReseau);
         dir.mkdirs();
         this.adresseShapesGC = adresseShapesGC;
@@ -109,10 +136,11 @@ public class FenPrincipale extends JFrame {
             while((line = dpts.readLine()) != null){
                 String[] fields = line.split(";");
                 String dpt = fields[0];
-                listeDpt.add(dpt + " | " + Main.getNomDepartement(dpt) + "    ");
+                listeDpt.add(dpt + " | " + Configuration.get().getNomDepartement(dpt) + "    ");
                 if (fields[1].equals("routier"))
-                    listeDptRoutier.add(dpt + " | " + Main.getNomDepartement(dpt) + "    ");
+                    listeDptRoutier.add(dpt + " | " + Configuration.get().getNomDepartement(dpt) + "    ");
             }
+            dpts.close();
         } catch(Exception e){
             JOptionPane.showMessageDialog(null, "Avant toute chose, cliquez sur le bouton \"Mettre à jour les départements disponibles\" de l'onglet choix des départements !");
         }
@@ -136,8 +164,8 @@ public class FenPrincipale extends JFrame {
 
     private void loadUnitCosts(String file){
         try {
-            Vector nomColonne = new Vector();
-            Vector donnees = new Vector();
+            Vector<String> nomColonne = new Vector<>();
+            Vector<Vector<String>> donnees = new Vector<>();
             String ligne, donneesLigne[];
 
             BufferedReader ficCU = new BufferedReader(new FileReader(file));
@@ -149,13 +177,14 @@ public class FenPrincipale extends JFrame {
 
             while ((ligne = ficCU.readLine()) != null) {
                 donneesLigne = ligne.split(";");
-                Vector cout = new Vector();
+                Vector<String> cout = new Vector<>();
 
                 for (int j = 0; j < 5; j++) {
                     cout.add(donneesLigne[j]);
                 }
                 donnees.add(cout);
             }
+            ficCU.close();
 
             DefaultTableModel dtm = new DefaultTableModel(donnees, nomColonne) {
 
@@ -181,7 +210,6 @@ public class FenPrincipale extends JFrame {
      * WARNING: Do NOT modify this code. The content of this method is
      * always regenerated by the Form Editor.
      */
-    @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
@@ -712,7 +740,7 @@ public class FenPrincipale extends JFrame {
             }
         });
 
-        jComboBox1.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "720 FO", "576 FO", "288 FO" }));
+        jComboBox1.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "720 FO", "576 FO", "288 FO" }));
 
         jLabel19.setText("Taille max. des câbles en souterrain");
 
@@ -732,7 +760,7 @@ public class FenPrincipale extends JFrame {
 
         jLabel28.setText("en aérien");
 
-        jComboBox2.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "288 FO", "144 FO", "96 FO" }));
+        jComboBox2.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "288 FO", "144 FO", "96 FO" }));
 
         jLabel32.setText("Mark-up longueur de câbles");
 
@@ -786,7 +814,7 @@ public class FenPrincipale extends JFrame {
 
         jLabel5.setText("Taille minimale des PM intérieurs");
 
-        jComboBox3.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "24 FO", "12 FO", "6 FO" }));
+        jComboBox3.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "24 FO", "12 FO", "6 FO" }));
 
         jLabel49.setText("Taille min. des câbles en horizontal");
 
@@ -1190,8 +1218,8 @@ public class FenPrincipale extends JFrame {
             if (returnVal == JFileChooser.APPROVE_OPTION) {
                 File file = fc.getSelectedFile();
                 try {
-                    Vector nomColonne = new Vector();
-                    Vector donnees = new Vector();
+                    Vector<String> nomColonne = new Vector<>();
+                    Vector<Vector<String>> donnees = new Vector<>();
                     String ligne, donneesLigne[];
 
                     BufferedReader ficCU = new BufferedReader(new FileReader(file));
@@ -1203,13 +1231,14 @@ public class FenPrincipale extends JFrame {
 
                     while ((ligne = ficCU.readLine()) != null) {
                         donneesLigne = ligne.split(";");
-                        Vector cout = new Vector();
+                        Vector<String> cout = new Vector<>();
 
                         for (int j = 0; j < 5; j++) {
                             cout.add(donneesLigne[j]);
                         }
                         donnees.add(cout);
                     }
+                    ficCU.close();
 
                     DefaultTableModel dtm = new DefaultTableModel(donnees, nomColonne) {
 
@@ -1344,7 +1373,7 @@ public class FenPrincipale extends JFrame {
     */
     private void jButton8MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton8MouseClicked
         boolean lireSR = jCheckBox11.isSelected();
-        List<String> listeDpts = splitAll(jList1.getSelectedValuesList(), " | ", 0);
+		List<String> listeDpts = splitAll(jList1.getSelectedValuesList(), " | ", 0);
         int nbLignesMinNRO = Integer.parseInt(jTextField22.getText());
         double distMaxNRONRA = Double.parseDouble(jTextField24.getText().replace(",", ".")); // en km
         this.topo.regrouperNRANRO(listeDpts, nbLignesMinNRO, distMaxNRONRA, lireSR);
@@ -1535,7 +1564,7 @@ public class FenPrincipale extends JFrame {
                 fp.setVisible(true);
                 this.setVisible(false);
 
-                (new Thread(deploiement)).start();
+                (MonitoredThread.fromRunnable("Déploiement : Lancer la modélisation", deploiement)).start();
 
             }
         }

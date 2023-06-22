@@ -25,11 +25,11 @@
  */
 package arcep.ftth2;
 
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.Point;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
@@ -129,6 +129,7 @@ public class ZAPM {
         builderPM.add("ID", Integer.class);
         builderPM.add("NB_LIGNES", Integer.class);
         builderPM.add("NB_FIBRES", Integer.class);
+        builderPM.add("NBARMOIRES", Integer.class);
         return builderPM.buildFeatureType();
     }
     
@@ -143,6 +144,7 @@ public class ZAPM {
         featureBuilderPM.add(this.id);
         featureBuilderPM.add(uo.getNbLignes());
         featureBuilderPM.add(uo.getNbIncomingFibres(true));
+        featureBuilderPM.add(uo.getNbArmoires());
         return featureBuilderPM.buildFeature(null);
     }
 

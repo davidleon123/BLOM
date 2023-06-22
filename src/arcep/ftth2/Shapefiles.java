@@ -25,27 +25,56 @@
  */
 package arcep.ftth2;
 
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import com.vividsolutions.jts.geom.*;
-import com.vividsolutions.jts.operation.valid.IsValidOp;
-import com.vividsolutions.jts.precision.GeometryPrecisionReducer;
-import com.vividsolutions.jts.triangulate.VoronoiDiagramBuilder;
-
-import org.geotools.data.*;
+import org.geotools.data.DefaultTransaction;
+import org.geotools.data.FeatureReader;
+import org.geotools.data.FileDataStore;
+import org.geotools.data.FileDataStoreFinder;
+import org.geotools.data.Transaction;
 import org.geotools.data.collection.ListFeatureCollection;
 import org.geotools.data.shapefile.ShapefileDataStore;
 import org.geotools.data.shapefile.ShapefileDataStoreFactory;
-import org.geotools.data.simple.*;
+import org.geotools.data.simple.SimpleFeatureCollection;
+import org.geotools.data.simple.SimpleFeatureSource;
+import org.geotools.data.simple.SimpleFeatureStore;
 import org.geotools.factory.CommonFactoryFinder;
-import org.geotools.feature.*;
-import org.geotools.feature.simple.*;
+import org.geotools.feature.FeatureIterator;
+import org.geotools.feature.simple.SimpleFeatureBuilder;
+import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.geometry.jts.JTSFactoryFinder;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryCollection;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.MultiLineString;
+import org.locationtech.jts.geom.MultiPolygon;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.PrecisionModel;
+import org.locationtech.jts.operation.valid.IsValidOp;
+import org.locationtech.jts.precision.GeometryPrecisionReducer;
+import org.locationtech.jts.triangulate.VoronoiDiagramBuilder;
+import org.opengis.feature.simple.SimpleFeature;
+import org.opengis.feature.simple.SimpleFeatureType;
+import org.opengis.feature.type.AttributeDescriptor;
+import org.opengis.filter.Filter;
+import org.opengis.filter.FilterFactory2;
 
-import org.opengis.feature.simple.*;
-import org.opengis.feature.type.*;
-import org.opengis.filter.*;
+import com.google.common.util.concurrent.AtomicDouble;
+
+import arcep.ftth2.configuration.Configuration;
+import arcep.utilitaires.MultiPolygonBin;
+import arcep.utilitaires.multithread.MultiTask;
 
 public class Shapefiles {
     
@@ -161,10 +190,11 @@ public class Shapefiles {
         PrecisionModel pm = new PrecisionModel(10);
         GeometryPrecisionReducer gpr = new GeometryPrecisionReducer(pm);
         
-        Map<String, MultiPolygon> poches = new HashMap<>();
+        Map<String, Geometry> poches = new HashMap<>();
         while(reader.hasNext()){           
             SimpleFeature feature = reader.next();
-            MultiPolygon geom = (MultiPolygon) gpr.reduce((MultiPolygon) feature.getDefaultGeometry());
+            Geometry g = (Geometry) feature.getDefaultGeometry();
+            Geometry geom = gpr.reduce(g);
             String code = (String) feature.getAttribute(1);
             System.out.println(code);
             poches.put(code, geom);
@@ -176,7 +206,7 @@ public class Shapefiles {
         
         GeometryFactory gf = new GeometryFactory(pm);
         
-        GeometryCollection col = new GeometryCollection(poches.values().toArray(new MultiPolygon[poches.size()]),gf);
+        GeometryCollection col = new GeometryCollection(poches.values().toArray(new Geometry[poches.size()]),gf);
         Geometry ztd = col.union();
         
         Map<String,Geometry> amii = getAMII(shpAMII, gf);
@@ -185,22 +215,23 @@ public class Shapefiles {
         File dirCommunes = new File(dossierCommunes);
         File dirPC2 = new File(destination);
         dirPC2.mkdirs();
-        for (File f : dirPC1.listFiles()){
+        MultiTask.forEach(dirPC1.listFiles(), (File f) -> {
+        	try {
             String ligne, codeINSEE, dpt = f.getName().replace(dirPC1.getName()+"_", "").replace(".csv", "");
             String[] donneesLigne;
             
             // on récupère le "buffer 5km" du département
             System.out.println("Lecture : " + shpDpts+"/"+dpt+"/"+dpt+".shp");
-            store = FileDataStoreFinder.getDataStore(new File(shpDpts+"/"+dpt+"/"+dpt+".shp"));
-            reader = store.getFeatureReader();
-            type = store.getSchema();
-            System.out.println("CRS du shapefile : "+type.getCoordinateReferenceSystem().getName().getCode());
-            SimpleFeature feature = reader.next();
+            FileDataStore loopStore = FileDataStoreFinder.getDataStore(new File(shpDpts+"/"+dpt+"/"+dpt+".shp"));
+            FeatureReader<SimpleFeatureType, SimpleFeature> loopReader = loopStore.getFeatureReader();
+            SimpleFeatureType loopType = loopStore.getSchema();
+            System.out.println("CRS du shapefile : "+loopType.getCoordinateReferenceSystem().getName().getCode());
+            SimpleFeature feature = loopReader.next();
             MultiPolygon shapeDpt = (MultiPolygon) feature.getDefaultGeometry();
             String code = (String) feature.getAttribute(1);
             System.out.println("Test département : "+code+" = "+dpt);
-            reader.close();
-            store.dispose();
+            loopReader.close();
+            loopStore.dispose();
             
             // on récupère les zones des communes
             Map<String, String> communesToZones = new HashMap<>();
@@ -240,22 +271,30 @@ public class Shapefiles {
             int pcCommuneSansZone = 0;
             int pcProblemeHD = 0;
             int pcProblemeBD =0;
+            
+            var shapeDptBin = new MultiPolygonBin(shapeDpt, gf);
+            var amiiBin = amii.containsKey(dpt) ? new MultiPolygonBin(amii.get(dpt), gf) : null;
+            var ztdBin = new MultiPolygonBin(ztd, gf);
+            var phdBin = new MultiPolygonBin(poches.get("PHD"), gf);
+            var pdbBin = new MultiPolygonBin(poches.get("PBD"), gf);
+            
+            
             while ((ligne = pc.readLine()) != null) {
                 donneesLigne = ligne.split(";");
                 Coordinate coordinate = new Coordinate(Double.parseDouble(donneesLigne[5]), Double.parseDouble(donneesLigne[6]));
                 Point pt = gf.createPoint(coordinate);
-                
+
                 // on ne garde le point que si sa localisation est raisonnable
                 
-                if (shapeDpt.covers(pt)){
+                if (shapeDptBin.isIn(pt)){ // 14%
                     codeINSEE = donneesLigne[4];
                     if (codeINSEE.length() == 4)
                         codeINSEE = "0".concat(codeINSEE);
                     String zone = communesToZones.get(codeINSEE);
                     if (zone == null){
                         pcCommuneSansZone++;
-                        if (ztd.contains(pt)) zone = "ZTD";
-                        else if (amii.containsKey(dpt) && amii.get(dpt).contains(pt)) zone = "AMII";
+                        if (ztdBin.isIn(pt)) zone = "ZTD"; // 14%
+                        else if (amiiBin != null && amiiBin.isIn(pt)) zone = "AMII";
                         else zone = "RIP";
                     }
                     switch(zone){
@@ -264,8 +303,8 @@ public class Shapefiles {
                             zone = "ZMD_"+zone;
                             break;
                         case "ZTD":
-                            if (poches.get("PHD").covers(pt)) zone = "ZTD_HD";
-                            else if (poches.get("PBD").covers(pt)) zone = "ZTD_BD";
+                            if (phdBin.isIn(pt)) zone = "ZTD_HD"; // 57%
+                            else if (pdbBin.isIn(pt)) zone = "ZTD_BD"; // 13%
                             else {
                                 System.out.println("Problème avec le PC "+donneesLigne[2]);
                                 double distHD = pt.distance(poches.get("PHD"));
@@ -286,11 +325,16 @@ public class Shapefiles {
                 
             }
             csv.close();
+            pc.close();
             System.out.println("Nombre de PC exclus car trop loin des limites du département : "+pcHorsDpt);
             System.out.println("Nombre de PC dont le code commune a posé problème : "+pcCommuneSansZone);
             System.out.println("Nombre de PC en ZTD_HD pas exactement dans le shpfile ZTD_HD : "+pcProblemeHD);
             System.out.println("Nombre de PC en ZTD_BD pas exactement dans le shpfile ZTD_BD : "+pcProblemeBD);  
-        }
+            loopReader.close();
+        	} catch(Exception e){
+                e.printStackTrace();
+            }
+        });
         
         } catch(Exception e){
             e.printStackTrace();
@@ -410,7 +454,7 @@ public class Shapefiles {
         long start = System.currentTimeMillis();
         System.out.println("Création des polygones de Voronoï des PC à partir du répertoire : "+cheminReseau+origine);
         File dir = new File(cheminReseau+origine);
-        for (File f : dir.listFiles()){
+        MultiTask.forEach(dir.listFiles(), (File f) ->{
             String dpt = f.getName();
             System.out.println("Déput de la création des Voronoï de PC pour le département "+dpt);
             File dossier = new File(cheminReseau+destination+"/"+destination+"_"+dpt);
@@ -448,9 +492,12 @@ public class Shapefiles {
                     reseauCuivre.loadPC(cheminReseau+"/"+adressePC, false, null, lireSR);
                     Map<Coordinate, String[]> listeNoeuds = new HashMap<>();
                     System.out.println("Nombre de PC en entrée de Voronoï : "+reseauCuivre.getListePC().size());
+                    
+                    var geometryBin = new MultiPolygonBin(geometry, gf);
+                    
                     for (PC pc : reseauCuivre.getListePC()){
                             Coordinate coordPC = new Coordinate(pc.x, pc.y);
-                            if (geometry.contains(gf.createPoint(coordPC))){ 
+                            if (geometryBin.isIn(gf.createPoint(coordPC))){ 
                                 String[] codes = {pc.identifiant,pc.pere.identifiant,pc.nra};
                                 listeNoeuds.put(coordPC, codes);
                             }
@@ -478,11 +525,14 @@ public class Shapefiles {
                     System.out.println("Nb Polygones " + listePolygones.getNumGeometries());
 
                     //Listing des PC
+                    geometryBin.buildGrid(100);
                     for (int i = 0; i < listePolygones.getNumGeometries(); i++) {
                         Geometry PC = listePolygones.getGeometryN(i);
-                        Geometry PC_env = PC.intersection(geometry); // on recoupe avec la vraie forme
                         String[] codes = listeNoeuds.get((Coordinate) PC.getUserData());
-                        featureBuilderZAPC.add(PC_env);
+                        if (!geometryBin.isFullyIn(PC.getEnvelopeInternal())) {
+                            PC = PC.intersection(geometry); // on recoupe avec la vraie forme
+                        }
+                        featureBuilderZAPC.add(PC);
                         featureBuilderZAPC.add(codes[0]);
                         featureBuilderZAPC.add(codes[1]);
                         featureBuilderZAPC.add(codes[2]);
@@ -496,7 +546,7 @@ public class Shapefiles {
                     e.printStackTrace();
                 }
             } else System.out.println("Le fichier existe déjà !");
-        }
+        });
         System.out.println("Fin de createVoronoiPC ! Temps écoulé : "+(System.currentTimeMillis() - start)/1000+" secondes.");
     }
 
@@ -521,8 +571,7 @@ public class Shapefiles {
                     dpts.add(f.getName().replace(adresseTableNRONRA+"_", ""));
             }
         }
-        for (String dpt : dpts){
-            
+        MultiTask.forEach(dpts, dpt -> {
             System.out.println("Début pour le département : "+dpt);
             
             File shpDir = new File(dossier.getPath()+"/"+destination+"_"+dpt);
@@ -639,16 +688,16 @@ public class Shapefiles {
                     }
                 } 
             } else System.out.println("Fusion des shapes déjà réalisée !");
-        }
+        });
         System.out.println("Fin de fusionShapes !");
     }
     
-    private static void readShpReseau(String dpt, String type, Geometry enveloppe, Reseau reseau, boolean voisin){
+    protected static void readShpReseau(String dpt, String type, Geometry enveloppe, Reseau reseau, boolean voisin){
         System.out.print("Début lecture du réseau "+type+" du département "+dpt+" en tant que réseau ");
         if (voisin) System.out.println("voisin");
         else System.out.println("propre.");
         try{
-            FileDataStore store = FileDataStoreFinder.getDataStore(new File(Main.getShapefileReseau(type, dpt)));
+            FileDataStore store = FileDataStoreFinder.getDataStore(new File(Configuration.get().getShapefileReseau(type, dpt)));
             SimpleFeatureType schema = store.getSchema();
             System.out.println("CRS du shapefile : "+schema.getCoordinateReferenceSystem().getName().getCode());
             
@@ -668,7 +717,7 @@ public class Shapefiles {
                     
                     List<double[]> intermediaires = new ArrayList<>();
                     for (Coordinate point : arete.getCoordinates()){
-                        double[] coord = {Parametres.arrondir(point.x,1), Parametres.arrondir(point.y,1)};
+                        double[] coord = {point.x, point.y};
                         intermediaires.add(coord);
                     }
                     double[] coord1 = intermediaires.remove(0);
@@ -682,10 +731,10 @@ public class Shapefiles {
                         case "GC":
                             try{modePose = Integer.parseInt((String) feature.getAttribute("MODE_POSE"));}
                             catch(NumberFormatException e){System.out.println("Mode pose non ou mal indiqué dans un fichier GC");}
-                            longueur = Parametres.arrondir(arete.getLength(),1);
+                            longueur = Parametres.arrondir(arete.getLength(), 1);
                             break;
                         case "routier":
-                            longueur = Parametres.arrondir(arete.getLength(),1);
+                            longueur = Parametres.arrondir(arete.getLength(), 1);
                             if (dpt.length() == 2)
                                 nature = (String) feature.getAttribute("NATURE");
                             else nature = (String) feature.getAttribute("NATURE");
@@ -730,17 +779,17 @@ public class Shapefiles {
         String line;
         
         // Gestion des réseaux à utiliser
-        String[] types = new String[] {};
-        if (gc) types = new String[]{"GC"};
-        if (routes) types = new String[]{"routier"};
-        if (gc && routes) types = new String[]{"GC", "routier"};
+        String[] types = gc ?
+        		(routes ? new String[]{"GC", "routier"} : new String[]{"GC"}) :
+        		(routes ? new String[]{"routier"} : new String[] {});
         
         // Création du répertoire destination des tracés
-        String destination = dossierBLO;
+        String destinationBuild = dossierBLO;
         for (String s : types){
-            destination+="-"+s;
+        	destinationBuild+="-"+s;
         }
-        destination += options;
+        destinationBuild += options;
+        String destination = destinationBuild;
         File dir = new File(racine+destination);
         dir.mkdir();
         
@@ -756,6 +805,7 @@ public class Shapefiles {
             while ((line = paramNRO.readLine()) != null){
                 writer.println(line);
             }
+            paramNRO.close();
             writer.println();
             // ... dont paramètres propres au tracé du réseau
             writer.print("Utilisation du (des) réseau(x) du (des) département(s) limitrophe(s) : ");
@@ -779,7 +829,8 @@ public class Shapefiles {
             
             writer.close();
             
-            for (String dpt : dptChoisis){ // ceux qui sont sélectionnés donc
+            MultiTask.forEach(dptChoisis, (String dpt) -> { // ceux qui sont sélectionnés donc
+            	try {
                 
                 System.out.println("Début pour le département "+dpt);
                 
@@ -797,26 +848,25 @@ public class Shapefiles {
                         + "Nombre de PC directement accrochés;Longueur totale pour l'accrochage des PC;Longueur moyenne d'accrochage");
                 
                 // stockage des longueurs ajoutées par la méthode Reseau.forceConnexite()
-                double nbArAjouteesCx = 0, longArAjouteesCx = 0;
+                AtomicDouble nbArAjouteesCx = new AtomicDouble(0), longArAjouteesCx = new AtomicDouble(0);
                 // stockage des longueurs ajoutées par la méthode Reseau.connecteRoutes()
-                double nbArAjouteesCR = 0, longArAjouteesCR = 0;
+                AtomicDouble nbArAjouteesCR = new AtomicDouble(0), longArAjouteesCR = new AtomicDouble(0);
                 
                 PrintWriter dureesCacul = new PrintWriter(dir.getPath()+"/"+destination+"_"+dpt+"/durees_calcul.csv");
                 dureesCacul.println("Departement;Zone;Lecture infra;forceConnexite;addPC;Total");
                 
                 // stockage des longueurs ajoutées par la méthode Reseau.addPC()
-                double nbArAjouteesPC = 0; double longArAjouteesPC = 0;
-                double longAccrochageReseau = 0; double nbPCAccroches = 0;
+                AtomicDouble nbArAjouteesPC = new AtomicDouble(0); AtomicDouble longArAjouteesPC = new AtomicDouble(0);
+                AtomicDouble longAccrochageReseau = new AtomicDouble(0); AtomicDouble nbPCAccroches = new AtomicDouble(0);
                           
-                List<String> dptVoisins = null;
-                if (limitrophes) dptVoisins = dptsLimitrophes.get(dpt);
+                List<String> dptVoisins = limitrophes ? dptsLimitrophes.get(dpt) : null;
                 File dirZANRO = new File(racine+dossierContours+"/"+dossierContours+"_"+dpt);
                 File[] dirZones = dirZANRO.listFiles();
                 String[] zones = new String[dirZones.length];
                 for (int i = 0;i<dirZones.length;i++){
                     zones[i] = dirZones[i].getName().replace(dpt+"_", "").replace(dossierContours+"_", "");
                 }
-                for (String zone : zones){
+                for(String zone : zones) {
                     System.out.println("Début pour la zone "+zone);
                     
                     long dureeLectureInfra = 0, dureeConnexite = 0, dureeAddPC = 0;
@@ -861,8 +911,8 @@ public class Shapefiles {
                         // Ouverture du fichier contenant les PC rattachés au NRO
                         BufferedReader rcNRO = new BufferedReader(new FileReader(racine+dossierNRO+"/"+dossierNRO+"_"+dpt+"/"+dossierNRO+"_"+dpt+"_"+zone+"/ListePC_"+nro+".csv"));
                         // Lecture des coordonnées x,y du NRO dans le fichier ListePC_NRO (remarque : elles sont écrites en en-tête des colonnes 6 et 7)
-                        line = rcNRO.readLine();
-                        String[] fields = line.split(";");
+                        String loopLine = rcNRO.readLine();
+                        String[] fields = loopLine.split(";");
                         reseau.setCentre(Double.parseDouble(fields[6]), Double.parseDouble(fields[7]));
                         
                         // Si routes et GC ont été chargés, chaque extrémité
@@ -871,64 +921,75 @@ public class Shapefiles {
                         // plus fine
                         System.out.println("Raccordement des routes au GC");
                         double[] resConnecteRoutes = reseau.connecteRoutes();
-                        nbArAjouteesCR+=resConnecteRoutes[0];
-                        nbArAjouteesCR+=resConnecteRoutes[1];
+                        nbArAjouteesCR.addAndGet(resConnecteRoutes[0]);
+                        nbArAjouteesCR.addAndGet(resConnecteRoutes[1]);
                         
                         // Le réseau (constitué de toutes les infrastructures
                         // mobilisables) est complété par des arcs les plus petits
                         // possibles pour assurer sa connexité
                         System.out.println("Connexité du réseau de la ZANRO");
                         long startConnexite = System.currentTimeMillis();
-                        double[] resConnexite  = reseau.forceConnexite();
+                        double[] resConnexite  = reseau.forceConnexiteV2();
                         dureeConnexite += (System.currentTimeMillis() - startConnexite)/1000;
                         System.out.println("Réseau rendu connexe en " + dureeConnexite + " s");
-                        nbArAjouteesCx+=resConnexite[0];
-                        longArAjouteesCx+=resConnexite[1];
+                        nbArAjouteesCx.addAndGet(resConnexite[0]);
+                        longArAjouteesCx.addAndGet(resConnexite[1]);
                         
                         System.out.println("Ajout des PC (et calcul du plus court chemin vers le NRO)");
                         long startAddPC = System.currentTimeMillis();
-                        while ((line = rcNRO.readLine()) != null){
-                            fields = line.split(";");
+                        
+                        reseau.initDijkstra();
+                        
+                        while ((loopLine = rcNRO.readLine()) != null){
+                            fields = loopLine.split(";");
                             double[] aretesAjouteesPC = reseau.addPC(Double.parseDouble(fields[1]), Double.parseDouble(fields[2]), fields[4], Integer.parseInt(fields[3]), Integer.parseInt(fields[5]) == 1);
-                            nbArAjouteesPC+=aretesAjouteesPC[0];
-                            if(aretesAjouteesPC[0] == 1) longArAjouteesPC += aretesAjouteesPC[1];
+                            nbArAjouteesPC.addAndGet(aretesAjouteesPC[0]);
+                            if(aretesAjouteesPC[0] == 1) longArAjouteesPC.addAndGet(aretesAjouteesPC[1]);
                             else {
-                                longAccrochageReseau += aretesAjouteesPC[1];
-                                nbPCAccroches += 1;
+                                longAccrochageReseau.addAndGet(aretesAjouteesPC[1]);
+                                nbPCAccroches.addAndGet(1);
                             }
                         }
+                        rcNRO.close();
                         dureeAddPC += (System.currentTimeMillis() - startAddPC) / 1000;
                         System.out.println("PC ajoutés au réseau en " + dureeAddPC + " s");
                         
                         // Stockage des shapefiles
                         reseau.store(dossier);
-                        if (tracerShpReseau) reseau.printShapefiles(Main.getCRS(dpt), dossierShp);
+                        if (tracerShpReseau) reseau.printShapefiles(Configuration.get().getCRS(dpt), dossierShp);
                         
                         // écriture du fichier ModePose_[idNRO].csv)
-                        computePourcentagesGC(nro, dossier.getPath(), new File(Main.getShapefileReseau("GC", dpt)), dirZANRO.getPath()+"/"+dirZANRO.getName()+"_"+zone, "ModesPose");
+                        computePourcentagesGC(nro, dossier.getPath(), new File(Configuration.get().getShapefileReseau("GC", dpt)), dirZANRO.getPath()+"/"+dirZANRO.getName()+"_"+zone, "ModesPose");
                     }
                     reader.close();
                     store.dispose();
-                    aretesAjoutees.println(dpt+";"+zone+";"
-                            +String.valueOf(nbArAjouteesCR).replace(".",",")+";"
-                            +String.valueOf(longArAjouteesCR).replace(".",",")+";"
-                            +String.valueOf(longArAjouteesCR/nbArAjouteesCR).replace(".",",")+";"
-                            +String.valueOf(nbArAjouteesCx).replace(".",",")+";"
-                            +String.valueOf(longArAjouteesCx).replace(".",",")+";"
-                            +String.valueOf(longArAjouteesCx/nbArAjouteesCx).replace(".",",")+";"
-                            +String.valueOf(nbArAjouteesPC).replace(".",",")+";"
-                            +String.valueOf(longArAjouteesPC).replace(".",",")+";"
-                            +String.valueOf(longArAjouteesPC/nbArAjouteesPC).replace(".",",")+";"
-                            +String.valueOf(nbPCAccroches).replace(".",",")+";"
-                            +String.valueOf(longAccrochageReseau).replace(".",",")+";"
-                            +String.valueOf(longAccrochageReseau/nbPCAccroches).replace(".",",")
-                    );
-                    dureesCacul.println(dpt + ";" + zone + ";" + dureeLectureInfra  + ";" + dureeConnexite + ";" + dureeAddPC + ";" + (System.currentTimeMillis() - startDptZone)/1000);
+                    synchronized (aretesAjoutees) {
+	                    aretesAjoutees.println(dpt+";"+zone+";"
+	                            +String.valueOf(nbArAjouteesCR).replace(".",",")+";"
+	                            +String.valueOf(longArAjouteesCR).replace(".",",")+";"
+	                            +String.valueOf(longArAjouteesCR.get()/nbArAjouteesCR.get()).replace(".",",")+";"
+	                            +String.valueOf(nbArAjouteesCx).replace(".",",")+";"
+	                            +String.valueOf(longArAjouteesCx).replace(".",",")+";"
+	                            +String.valueOf(longArAjouteesCx.get()/nbArAjouteesCx.get()).replace(".",",")+";"
+	                            +String.valueOf(nbArAjouteesPC).replace(".",",")+";"
+	                            +String.valueOf(longArAjouteesPC).replace(".",",")+";"
+	                            +String.valueOf(longArAjouteesPC.get()/nbArAjouteesPC.get()).replace(".",",")+";"
+	                            +String.valueOf(nbPCAccroches).replace(".",",")+";"
+	                            +String.valueOf(longAccrochageReseau).replace(".",",")+";"
+	                            +String.valueOf(longAccrochageReseau.get()/nbPCAccroches.get()).replace(".",",")
+	                    );
+                    }
+                    synchronized (dureesCacul) {
+                    	dureesCacul.println(dpt + ";" + zone + ";" + dureeLectureInfra  + ";" + dureeConnexite + ";" + dureeAddPC + ";" + (System.currentTimeMillis() - startDptZone)/1000);
+                    }
                     System.out.println("Calcul du réseau terminé pour la zone " + dpt + "-" + zone + " en " + (System.currentTimeMillis() - startDptZone)/1000 + " s");
                 }
                 aretesAjoutees.close();
                 dureesCacul.close();
-            }
+                } catch (Exception e){
+                    e.printStackTrace();
+                }
+            });
             
         } catch (Exception e){
             e.printStackTrace();
@@ -966,6 +1027,7 @@ public class Shapefiles {
                     transaction.rollback();
                 } finally {
                     transaction.close();
+                    dataStorePM.dispose();
                     System.out.println("Impression réussie pour "+shp);
                 }
             } else {

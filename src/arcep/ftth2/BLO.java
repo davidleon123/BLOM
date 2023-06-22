@@ -25,13 +25,23 @@
  */
 package arcep.ftth2;
 
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.Point;
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
+
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
@@ -189,16 +199,18 @@ public class BLO {
             String modeReconstrGCTransport = parametres.modeReconstrGCTransport;
             String modeReconstrCDistrib = parametres.modeReconstrGCDistrib;
             
-            if(modeReconstrGCTransport == "Tout reconstruire en souterrain") {
-                root.setModesPose(false, true, (modeReconstrCDistrib=="En aérien"));
+            String enAerienPattern = "En a.*rien";
+            
+            if("Tout reconstruire en souterrain".equals(modeReconstrGCTransport)) {
+                root.setModesPose(false, true, Pattern.matches(enAerienPattern,  modeReconstrCDistrib));
                 System.out.println("Forçage en souterrain de l'aérien");
             } else {
-                root.setModesPose((modeReconstrGCTransport=="En aérien"), false, (modeReconstrCDistrib=="En aérien"));
+                root.setModesPose(Pattern.matches(enAerienPattern,  modeReconstrGCTransport), false, Pattern.matches(enAerienPattern,  modeReconstrCDistrib));
             }
             //root.setModesPose();
         }
     }
-
+    
     public void calculerUOAretes(){
         for (AreteBLOM a : root.getFilles()){
             a.calculUO(zones, parametres); // fonction récursive
@@ -383,6 +395,7 @@ public class BLO {
                     res[i] = Double.parseDouble(fields[i+1].replace(",","."));
                 }
             }
+            reader.close();
         }catch(IOException e){}
         return res;
     }

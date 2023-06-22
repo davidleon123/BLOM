@@ -25,14 +25,18 @@
  */
 package arcep.ftth2;
 
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.Point;
 import java.io.PrintWriter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
-import org.jgrapht.GraphPath;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
@@ -42,13 +46,21 @@ import org.opengis.referencing.crs.CoordinateReferenceSystem;
 * le Reseau desservi par un NRO
 */
 public class NoeudAGarder extends Node {
-    
+	public static class MeilleurChemin {
+	    public double distanceAuCentre = Double.POSITIVE_INFINITY;
+		public NoeudAGarder noeudPrecedent;
+		public Arete aretePrecedente;
+	}
+	
     boolean pathConnu;
 
-    public double distanceAuCentre;
     private List<Long> pathToCentre;
     private Map<String,Integer> demandeParZone;
     boolean indicePMint;
+
+    public double distanceAuCentre;
+    public MeilleurChemin meilleurChemin = new MeilleurChemin();
+
 
     public NoeudAGarder(){}
 
@@ -63,16 +75,6 @@ public class NoeudAGarder extends Node {
     public void init(){
         demandeParZone = new HashMap<>();
         pathToCentre = new ArrayList<>();
-    }
-    
-    public void addPath(GraphPath dsp){
-        pathConnu = true;
-        distanceAuCentre = Parametres.arrondir(dsp.getLength(),1);
-        List<Arete> liste = dsp.getEdgeList();
-        pathToCentre = new ArrayList<>();
-        for (Arete a : liste){
-            pathToCentre.add(a.id);
-        }
     }
 
     public void declarePMint(){
@@ -98,6 +100,8 @@ public class NoeudAGarder extends Node {
             isPMint = 1;
         writer.print(";"+isPMint);
         if (this.hasDemandeLocale()){
+        	var pathToCentre = getPathFromMeilleurResultat();
+        	
             writer.print(";"+pathToCentre.size());
             for (Long n : pathToCentre){
                 writer.print(";"+n);
@@ -106,6 +110,41 @@ public class NoeudAGarder extends Node {
         writer.println();
     }
 
+	public List<Arete> getAretePathFromMeilleurResultat() {
+		var pathToCentre = new LinkedList<Arete>();
+		var current = this;
+		while(current != null) {
+			if (current.meilleurChemin.aretePrecedente == null) {
+				break;
+			}
+			if (current.meilleurChemin.aretePrecedente == null) {
+				throw new RuntimeException("To investigate");
+			}
+			pathToCentre.add(0, current.meilleurChemin.aretePrecedente);
+			current = current.meilleurChemin.noeudPrecedent;        				
+		}
+		return pathToCentre;
+	}
+
+	public List<Long> getPathFromMeilleurResultat() {
+		var pathToCentre = new LinkedList<Long>();
+		var current = this;
+		while(current != null) {
+			if (current.meilleurChemin.aretePrecedente == null) {
+				break;
+			}
+			if (current.meilleurChemin.aretePrecedente == null) {
+				throw new RuntimeException("To investigate");
+			}
+			pathToCentre.add(0, current.meilleurChemin.aretePrecedente.id);
+			current = current.meilleurChemin.noeudPrecedent;        				
+		}
+		return pathToCentre;
+	}
+
+    public void setPath(List<Long> ids){
+        pathToCentre = ids;
+    }
     public void addToPath(Long id){
         pathToCentre.add(id);
     }
@@ -163,6 +202,11 @@ public class NoeudAGarder extends Node {
         featureBuilder.add(this.id);
         featureBuilder.add(idReseau);
         return featureBuilder.buildFeature(null);
+    }
+    
+    @Override
+    public String toString() {
+    	return String.format("[%f,%f]", coord[0], coord[1]);
     }
     
 }

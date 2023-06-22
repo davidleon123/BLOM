@@ -104,7 +104,13 @@ public class UO {
     public int getNbLignes(){
         return this.nbLignesExt+this.nbLignesInt;
     }
-       
+
+    
+    public int getNbArmoires() {
+        return this.nbArmoiresPMint + this.nbPM_ZMD + this.nbPM_ZTD_BD + this.nbPM_ZTD_HD;
+    }
+    
+    
     public void addLineaires(Lineaires lineaires){
         if (isTransport) this.linNROPM.addLineaires(lineaires);
         else this.linPMPBO.addLineaires(lineaires);

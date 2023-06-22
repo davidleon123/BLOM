@@ -25,16 +25,30 @@
  */
 package arcep.ftth2;
 
-import com.google.common.collect.HashBasedTable;
-import com.vividsolutions.jts.geom.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
+
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.MultiLineString;
+import org.locationtech.jts.geom.Point;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
+import com.google.common.collect.HashBasedTable;
+
+@SuppressWarnings("serial")
 public class AreteBLOM extends Arete {
     
     public Noeud n; // extrémité avale en étiquette
@@ -232,7 +246,7 @@ public class AreteBLOM extends Arete {
             demandePM += fille.n.taillePM(zone);
             fille.n.setTaillePM(zone,0);
             ListIterator<Double> iterator = this.n.distri.listIterator();
-            double longueurFille = Parametres.arrondir(fille.longueur,1);
+            double longueurFille = fille.longueur;
             for (Double d : fille.n.distri){
                 d += longueurFille;
                 while (iterator.hasNext() && iterator.next()<d){}
@@ -299,7 +313,7 @@ public class AreteBLOM extends Arete {
         return nbPM - regroupables.size();
     }
 
-    public void listingPMint(List listePMint, double distance){
+    public void listingPMint(List<Noeud> listePMint, double distance){
         double d = distance+this.longueur;
         this.n.distanceAuCentre = d;
         if (this.n.isPMint()){
@@ -390,7 +404,7 @@ public class AreteBLOM extends Arete {
             }
             longueurP += this.longueur;
         } else if (niveau < this.niveau){
-            Queue<AreteBLOM> file = new ArrayBlockingQueue(filles.size(), true, filles);
+            Queue<AreteBLOM> file = new ArrayBlockingQueue<>(filles.size(), true, filles);
             while(!file.isEmpty()){
                 longueurP = file.remove().setModesPose(niveau, seuilAerien, seuilPleineTerreAerien, seuilPleineTerreSouterrain, longueurP);
             }
@@ -513,7 +527,7 @@ public class AreteBLOM extends Arete {
             }
             
         } else if (niveau < this.niveau){
-            Queue<AreteBLOM> file = new ArrayBlockingQueue(filles.size(), true, filles);
+            Queue<AreteBLOM> file = new ArrayBlockingQueue<>(filles.size(), true, filles);
             while(!file.isEmpty()){
                 longueurRecP = file.remove().setModesPose(niveau, seuilReconstructionAerienSouterrain, longueurRecP);
             }

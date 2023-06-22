@@ -25,22 +25,35 @@
  */
 package arcep.ftth2;
 
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import edu.wlu.cs.levy.CG.KDTree;
-import edu.wlu.cs.levy.CG.KeyDuplicateException;
-import java.io.*;
-import java.util.*;
-import org.geotools.factory.Hints;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.geometry.jts.JTSFactoryFinder;
-import org.jgrapht.GraphPath;
-import org.jgrapht.alg.ConnectivityInspector;
-import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
+import org.geotools.util.factory.Hints;
+import org.jgrapht.alg.connectivity.ConnectivityInspector;
 import org.jgrapht.graph.Pseudograph;
+import org.jgrapht.graph.WeightedPseudograph;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
+
+import arcep.utilitaires.DijkstraReseau;
+import arcep.utilitaires.GraphConnector;
+import de.biomedical_imaging.edu.wlu.cs.levy.CG.KDTree;
+import de.biomedical_imaging.edu.wlu.cs.levy.CG.KeyDuplicateException;
 
 public class Reseau {
    
@@ -71,9 +84,11 @@ public class Reseau {
     private final double facteurAerien;
     private final double facteurPleineTerre;
     
-    public Reseau(String id, String zone, HashMap<String, Double> parametresReseau){
+    protected DijkstraReseau dijkstraReseau;
+    
+    public Reseau(String id, String zone, Map<String, Double> parametresReseau){
         this.id = id;
-        graphe = new Pseudograph<>(Arete.class);
+        graphe = new WeightedPseudograph<>(Arete.class);
         compteurArete = 0;
         compteurNoeud = 0;
         zones = new HashSet<>();
@@ -86,8 +101,21 @@ public class Reseau {
         this.facteurPleineTerre = parametresReseau.get("facteurPleineTerre");
         
         this.coefVdO = parametresReseau.get("facteurVdO");
-        
         System.out.println("Création du réseau du NRO "+id);
+    }
+    
+    protected Pseudograph<NoeudAGarder, Arete> getGraphe() {
+		return graphe;
+	}
+    
+    public void initDijkstra() {
+    	if (dijkstraReseau != null) {
+    		throw new RuntimeException("On ne peut initialiser le dijkstra du reseau qu'une seul fois");
+    	}
+    	if (centre == null) {
+    		throw new RuntimeException("On ne peut initialiser le dijkstra du reseau qu'après avoir setté le centre");
+    	}
+    	this.dijkstraReseau = new DijkstraReseau(graphe, centre);
     }
     
     public void loadLineString(double[] coord1, double[] coord2, String type, boolean voisin, int modePose, double longueur, long idProprio, String nature, List<double[]> intermediaires){
@@ -127,7 +155,8 @@ public class Reseau {
             int iPrec = -1;
             
             double longParcourue = 0;   // Longueur de la sous-arête
-            double longParcourueTotale = 0; // Pour contrôler qu'on retombe bien, au total, sur la "longueur"
+            @SuppressWarnings("unused")
+			double longParcourueTotale = 0; // Pour contrôler qu'on retombe bien, au total, sur la "longueur"
             
             // Ajout des NoeudInterne qui doivent être convertis en NoeudAGarder
             // et des Aretes (avec calcul de leur longueur)
@@ -138,8 +167,8 @@ public class Reseau {
                     coord = intermediaires.get(i);
                     // Création d'un Node pour pouvoir calculer sa distance avec le précédent
                     tempNode = new Node(); tempNode.coord = coord;
-                    if(i > 0) longParcourue += tempNode.distance(intermediaires.get(i-1));
-                    else longParcourue += tempNode.distance(coord1);// distance au tout premier noeud
+                    if(i > iPrec+1) longParcourue += tempNode.distance(intermediaires.get(i-1));
+                    else longParcourue += tempNode.distance(precedent);// distance au tout premier noeud
                 }
                 
                 // Ajout du NoeudAGarder et de l'Arete
@@ -148,7 +177,7 @@ public class Reseau {
                 this.addArete(
                     precedent,
                     courant,
-                    modePose, longParcourue, idProprio,
+                    modePose, Parametres.arrondir(longParcourue, 1), idProprio,
                     intermediaires.subList(iPrec+1, iAGarder), // nb. que subList(from, to) inclue from et exclue to
                     type, voisin);
                 
@@ -169,8 +198,8 @@ public class Reseau {
                     coord = intermediaires.get(i);
                     // Création d'un Node pour pouvoir calculer sa distance avec le précédent
                     tempNode = new Node(); tempNode.coord = coord;
-                    if(i > 0) longParcourue += tempNode.distance(intermediaires.get(i-1));
-                    else longParcourue += tempNode.distance(coord1);// distance au tout premier noeud
+                    if(i > iPrec+1) longParcourue += tempNode.distance(intermediaires.get(i-1));
+                    else longParcourue += tempNode.distance(precedent);// distance au tout premier noeud
                 }
             
                 longParcourue += n2.distance(intermediaires.get(intermediaires.size() - 1));
@@ -182,7 +211,7 @@ public class Reseau {
             
             this.addArete(precedent,
                     n2,
-                    modePose, longParcourue, idProprio,
+                    modePose, Parametres.arrondir(longParcourue, 1), idProprio,
                     intermediaires.subList(iPrec+1, intermediaires.size()), // on ne conserve que les "derniers" noeuds intermédiaires
                     type, voisin);
         }
@@ -211,22 +240,35 @@ public class Reseau {
     */
     public double[] forceConnexite(){
         double[] res = {0,0};
-        ConnectivityInspector<NoeudAGarder, Arete> ci = new ConnectivityInspector(graphe);
+        ConnectivityInspector<NoeudAGarder, Arete> ci = new ConnectivityInspector<>(graphe);
         System.out.println("Début de la complétion de " + ci.connectedSets().size() + " ilots");
-        while (!ci.isGraphConnected()) {
-            Set<NoeudAGarder> noeuds = new HashSet();
+        while (!ci.isConnected()) {
+            Set<NoeudAGarder> noeuds = new HashSet<>();
             List<Set<NoeudAGarder>> ilots = ci.connectedSets();
             
             Set<NoeudAGarder> ilotCentral = ci.connectedSetOf(centre);
-            for (Set ilot : ilots){
+            for (Set<NoeudAGarder> ilot : ilots){
                 if (!ilot.equals(ilotCentral)) noeuds.addAll(ilot);
             }
             List<NoeudAGarder> extremites = this.trouverPont(ilotCentral, noeuds);
-            double longueur = Parametres.arrondir(extremites.get(0).distance(extremites.get(1)),1);
+            double longueur = extremites.get(0).distance(extremites.get(1));
             this.construitAreteConnexite(extremites.get(0), extremites.get(1), longueur);
             res[0]++;
             res[1]+= longueur;
-            ci.edgeAdded(null); // Réinitialisation du ConnectivityInspector après ajout de l'arête
+            ci.edgeRemoved(null); // Réinitialisation du ConnectivityInspector après ajout de l'arête
+        }
+        return res;
+    }
+    
+    public double[] forceConnexiteV2(){
+        double[] res = {0,0};
+        GraphConnector connector = new GraphConnector(graphe, centre);
+            
+        for (var extremites : connector.getAreteToMakeConnexe()) {
+            double longueur = extremites.get(0).distance(extremites.get(1));
+            this.construitAreteConnexite(extremites.get(0), extremites.get(1), longueur);
+            res[0]++;
+            res[1]+= longueur;
         }
         return res;
     }
@@ -313,7 +355,7 @@ public class Reseau {
     public double[] addPC(double x, double y, String zone, int nbLignes, boolean isPMint){
         double[] coord = {x, y};
         double[] areteAjoutee = {0, 0};
-        
+       
         // Calcul du plus court chemin par le GC d'Orange
         Object[] gc = this.distanceAuCentre(coord, "GC");
         Node n = (Node) gc[1];  // n est le Node auquel relier le PC pour construire ce plus court chemin
@@ -334,6 +376,9 @@ public class Reseau {
             areteAjoutee[0] = 0;
             areteAjoutee[1] = distGC;
             
+        	this.dijkstraReseau.recompute(noeud); // pour s'assurer que le pathToCentre existe (il faut bien ajouter les arêtes d'abord))
+            if (noeud.distanceAuCentre == 0) noeud.distanceAuCentre = noeud.meilleurChemin.distanceAuCentre;
+        	this.dijkstraReseau.ajoutFourreauxSiNecessaire(this, noeud);
         } else{
             // si les routes ne sont pas autorisées, on construit le nouveau noeud dans l'index GC
             if (index(2).size() == 0) {
@@ -349,10 +394,12 @@ public class Reseau {
                 this.construitAretePC(noeud, (NoeudAGarder) n, distGC);
 
                 // On s'assure que que le pathToCentre existe (il est construit dans le cas contraire)
-                this.distanceDijkstra(noeud);
+                this.dijkstraReseau.recompute((NoeudAGarder) n, noeud); // pour s'assurer que le pathToCentre existe (il faut bien ajouter les arêtes d'abord))
+                if (noeud.distanceAuCentre == 0) noeud.distanceAuCentre = noeud.meilleurChemin.distanceAuCentre;
+            	this.dijkstraReseau.ajoutFourreauxSiNecessaire(this, noeud);
+
                 areteAjoutee[0] = 1;
                 areteAjoutee[1] = distGC;
-
             } else {
 
                 // sinon on tente de construire le plus court chemin en s'autorisant
@@ -377,10 +424,12 @@ public class Reseau {
                     this.construitAretePC(noeud, (NoeudAGarder) n, distGC);
 
                     // On s'assure que que le pathToCentre existe (il est construit dans le cas contraire)
-                    this.distanceDijkstra(noeud);
+                	this.dijkstraReseau.recompute((NoeudAGarder) n, noeud); // pour s'assurer que le pathToCentre existe (il faut bien ajouter les arêtes d'abord))
+                    if (noeud.distanceAuCentre == 0) noeud.distanceAuCentre = noeud.meilleurChemin.distanceAuCentre;
+                	this.dijkstraReseau.ajoutFourreauxSiNecessaire(this, noeud);
+
                     areteAjoutee[0] = 1;
                     areteAjoutee[1] = distGC;
-                    
                 } else{
                     // on choisit comme noeud de rattachement le noeud minimisant
                     // la distance au centre en s'autorisant l'utilisation des routes
@@ -395,6 +444,10 @@ public class Reseau {
                         noeud = (NoeudAGarder) n;
                         areteAjoutee[0] = 0;
                         areteAjoutee[1] = distRoutier;
+                        
+                    	this.dijkstraReseau.recompute(noeud); // pour s'assurer que le pathToCentre existe (il faut bien ajouter les arêtes d'abord))
+                        if (noeud.distanceAuCentre == 0) noeud.distanceAuCentre = noeud.meilleurChemin.distanceAuCentre;
+                    	this.dijkstraReseau.ajoutFourreauxSiNecessaire(this, noeud);
                     }
                     
                     else{
@@ -409,7 +462,10 @@ public class Reseau {
                         this.construitAretePC(noeud, (NoeudAGarder) n, distRoutier);
 
                         // On s'assure que que le pathToCentre existe (il est construit dans le cas contraire)
-                        this.distanceDijkstra(noeud);
+                    	this.dijkstraReseau.recompute((NoeudAGarder) n, noeud); // pour s'assurer que le pathToCentre existe (il faut bien ajouter les arêtes d'abord))
+                        if (noeud.distanceAuCentre == 0) noeud.distanceAuCentre = noeud.meilleurChemin.distanceAuCentre;
+                    	this.dijkstraReseau.ajoutFourreauxSiNecessaire(this, noeud);
+
                         areteAjoutee[0] = 1;
                         areteAjoutee[1] = distRoutier;
                     }
@@ -419,11 +475,10 @@ public class Reseau {
         if (zone.equals("ZTD_HD") && isPMint) noeud.declarePMint();
         noeud.addDemande(zone, nbLignes);   // La demande du PC est ajoutée au NoeudAGarder noeud
         zones.add(zone);
-        
-        //areteAjoutee[1] = distGC;
+
         return(areteAjoutee);
     }
-    
+
     public void test(){
         System.out.println("Nombre de noeuds dans le graphe : " + graphe.vertexSet().size());
         System.out.println("Nombre d'arêtes dans le graphe : " + graphe.edgeSet().size());
@@ -442,7 +497,14 @@ public class Reseau {
             PrintWriter writer = new PrintWriter(dossier+"/Aretes_"+id+".csv");
             writer.println("Identifiant;Noeud1;Noeud2;Mode de pose;Longueur;Proprietaire;Points intermediaires");
             for (Arete a : graphe.edgeSet()){
-                a.print(writer, graphe.getEdgeSource(a), graphe.getEdgeTarget(a));
+            	var node1 = graphe.getEdgeSource(a);
+            	var node2 = graphe.getEdgeTarget(a);
+            	if (node1.getId() < node2.getId()) {
+            		a.print(writer, node1, node2);
+            	} else {
+            		a.print(writer, node2, node1);
+            	}
+                
             }
             writer.close();
             
@@ -456,9 +518,8 @@ public class Reseau {
             }
             writer.println();
             writer.println("Identifiant;X;Y;Nombre de zone de demande locale;Demande locale par zone;Indice PM;Nombre d'arêtes dans le path;Identifiants des arêtes");
-            DijkstraShortestPath dsp = new DijkstraShortestPath(graphe);
             for (NoeudAGarder n : graphe.vertexSet()){
-                if (n.hasDemandeLocale()) n.addPath(dsp.getPath(centre, n));
+            	if (n.hasDemandeLocale()) n.setPath(n.getPathFromMeilleurResultat());
                 n.print(writer);
             }
             writer.close();
@@ -483,6 +544,7 @@ public class Reseau {
                     demande.add(n);
                 }
             }
+            reader.close();
         } catch (IOException e){
             e.printStackTrace();
         }
@@ -506,6 +568,7 @@ public class Reseau {
                 String fields[] = line.split(";");
                 map.put(Integer.parseInt(fields[0]), new Noeud(fields, seuilPMint));
             }
+            reader.close();
         } catch (IOException e){
             e.printStackTrace();
         }
@@ -522,6 +585,7 @@ public class Reseau {
             BufferedReader reader = new BufferedReader (new FileReader(dossier+"/Noeuds_"+codeNRO+".csv"));
             String line = reader.readLine();
             i = Integer.parseInt(line.split(";")[1]);
+            reader.close();
         } catch (IOException e){
             e.printStackTrace();
         }
@@ -538,6 +602,7 @@ public class Reseau {
                 String[] fields = line.split(";");
                 map.put(Long.parseLong(fields[0]), new Arete(fields));
             }
+            reader.close();
         } catch (IOException e){
             e.printStackTrace();
         }
@@ -550,7 +615,7 @@ public class Reseau {
     * le plus proche d'un couple de coordonnées
     * (cf. méthode indice() )
     */
-    private KDTree<Node> index(int indice){
+    protected KDTree<Node> index(int indice){
         switch(indice){
             case 0:
                 return index_GC_propre;
@@ -589,7 +654,7 @@ public class Reseau {
         return i;
     }
     
-    private String type(int indice){
+    public String type(int indice){
         switch(indice){
             case 0:
             case 1:
@@ -769,12 +834,17 @@ public class Reseau {
     }
     
     private void addArete(NoeudAGarder n1, NoeudAGarder n2, int modePose, double longueur, long idProprio, List<NoeudInterne> intermediaires){
+    	addArete(n1, n2, modePose, longueur, idProprio, intermediaires, false);
+    }
+    
+    private void addArete(NoeudAGarder n1, NoeudAGarder n2, int modePose, double longueur, long idProprio, List<NoeudInterne> intermediaires, boolean dejaUtilise){
         compteurArete++;
         Arete a = new Arete(compteurArete, modePose, idProprio, longueur);
+        a.dejaUtilise = dejaUtilise;
         a.changeAndAddIntermediaires(intermediaires,n1,n2);
         graphe.addEdge(n1, n2, a);
         try{
-            graphe.setEdgeWeight(a, longueur*multiple(modePose, false));
+            graphe.setEdgeWeight(a, longueur*multiple(modePose, dejaUtilise));
         } catch(Exception e){
             e.printStackTrace();
         }
@@ -844,23 +914,10 @@ public class Reseau {
         }
         return res;
     }
-    
+ 
     
     private double distanceDijkstra(NoeudAGarder noeud){
-        if (!noeud.pathConnu){
-            GraphPath dsp = (new DijkstraShortestPath(graphe)).getPath(centre, noeud);
-            List<Arete> liste = dsp.getEdgeList();
-            try {
-                for (Arete a : liste) {
-                    this.graphe.setEdgeWeight(a, a.longueur*multiple(a.modePose, true));
-                }
-            } catch(Exception e){
-                e.printStackTrace();
-            }
-            
-            noeud.addPath(dsp);
-        }
-        return noeud.distanceAuCentre;
+    	return noeud.meilleurChemin.distanceAuCentre;
     }
     
     private double distanceDijkstra(Node n){
@@ -905,7 +962,7 @@ public class Reseau {
             if (index(indice(type,true)).size() > 0){
                 Node n2 = index(indice(type,true)).nearest(coord);
                 double d2 = n2.distance(coord)*multiple(11, false)+ distanceDijkstra(n2);
-                if (d2<d1){
+                if (Parametres.arrondir(d2,3) < Parametres.arrondir(d1,3)){
                     result[0] = d2;
                     result[1] = n2;
                     result[2] = indice(type,true);
@@ -944,26 +1001,32 @@ public class Reseau {
             suivant = iterator.next();
             longueur += precedent.distance(suivant);
         }
-        // Ajout de l'arête entre n1 et nouveau
-        addArete(n.voisins[0],nouveau,n.a.modePose,Parametres.arrondir(longueur,1),n.a.idProprio,intermediaires1);
-        
         // calcul de la longueur entre n2 (n.voisin[1]) et nouveau
         // et récupération de la liste des intermédiaires entre n2 et nouveau
-        longueur = 0;
+        double longueur2 = 0;
         List<NoeudInterne> intermediaires2 = new ArrayList<>();
         precedent = n;
         while (iterator.hasNext()){
             suivant = iterator.next();
-            longueur += precedent.distance(suivant);
+            longueur2 += precedent.distance(suivant);
             intermediaires2.add(suivant);
             precedent = suivant;
         }
-        longueur += precedent.distance(n.voisins[1]);
+        longueur2 += precedent.distance(n.voisins[1]);
+        var longueurtot = longueur + longueur2;
+        longueur = Parametres.arrondir(n.a.longueur * longueur / longueurtot, 1);
+        longueur2 =  Parametres.arrondir(n.a.longueur - longueur, 1);
+        
+        // Ajout de l'arête entre n1 et nouveau
+        addArete(n.voisins[0],nouveau,n.a.modePose,longueur,n.a.idProprio,intermediaires1, n.a.dejaUtilise);
+        
         // Ajout de l'arête entre nouveau et n2
-        addArete(nouveau,n.voisins[1],n.a.modePose, Parametres.arrondir(longueur,1), n.a.idProprio, intermediaires2);
+        addArete(nouveau,n.voisins[1],n.a.modePose, longueur2, n.a.idProprio, intermediaires2, n.a.dejaUtilise);
         
         // Calcul éventuel du plus court chemin vers le NRO
-        if(calculeDistanceAuCentre) distanceDijkstra(nouveau); // pour s'assurer que le pathToCentre existe (il faut bien ajouter les arêtes d'abord))
+        if(calculeDistanceAuCentre) {
+        	this.dijkstraReseau.recompute(n.voisins[0], n.voisins[1], nouveau); // pour s'assurer que le pathToCentre existe (il faut bien ajouter les arêtes d'abord))
+        }
         
         return nouveau;
     }
@@ -982,9 +1045,9 @@ public class Reseau {
      * @return  (double) poids linéique de l'arête
      * @throws Exception 
      */
-    private double multiple (int modePose, boolean dejaUtilise) throws Exception{
+    private double multiple (int modePose, boolean dejaUtilise) {
         if (modePose == -1){
-            throw new Exception("Le mode de pose n'a pas été renseigné au préalable !");
+            throw new RuntimeException("Le mode de pose n'a pas été renseigné au préalable !");
         } else {
             double multiplicateur = facteurConduite; // modePose = 3,5,6,7,8,9,10
             switch(modePose){
@@ -1004,6 +1067,19 @@ public class Reseau {
             }
             return multiplicateur;
         }
+    }
+    
+    /**
+     * Réévalue la longueur d'une arete car on l'utilise
+     * @param a
+     */
+    public void utiliseArete(Arete a) {
+		a.dejaUtilise = true;
+		var longueurPondere = Parametres.arrondir(a.getLongueur()*multiple(a.getModePose(), true), 1);
+		if (longueurPondere > this.graphe.getEdgeWeight(a)) {
+			throw new RuntimeException("ca pue");
+		}
+		this.graphe.setEdgeWeight(a, longueurPondere);
     }
     
     /**

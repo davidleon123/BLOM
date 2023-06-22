@@ -42,4 +42,11 @@ public class Node {
         return Math.sqrt(this.distanceQuad(coord[0], coord[1]));
     }
     
+    public int getId() {
+		return id;
+	}
+    
+    public double[] getCoord() {
+		return coord;
+	}
 }

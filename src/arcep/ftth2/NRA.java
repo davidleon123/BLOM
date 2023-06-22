@@ -26,7 +26,7 @@
 package arcep.ftth2;
 
 import java.util.*;
-import edu.wlu.cs.levy.CG.*;
+import de.biomedical_imaging.edu.wlu.cs.levy.CG.*;
 
 public class NRA extends PointReseau {
     
@@ -181,10 +181,12 @@ public class NRA extends PointReseau {
     }
     
     private void ajoutPC(List<PC> liste) {
-        listePC.addAll(liste);
-        for (PC PC : liste) {
-            PODI += PC.lignes;
-        }
+    	for (var PC : liste) {
+    		if (!listePC.contains(PC)) {
+		        listePC.add(PC);
+	            PODI += PC.lignes;
+    		}
+    	}
     }
 
     public void addFils(PointReseau pt, KDTree<NRA> indexNRA){
