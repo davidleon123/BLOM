@@ -97,9 +97,6 @@ public class ModuleTopo {
             @Override
             public void runTask() {
                 Shapefiles.buffer(5, adresseShapesDptsMetro, nameShapeDpts, cheminReseau+"DptsEtendus");
-                for (String shapeDOM : shapesDOM){
-                    Shapefiles.buffer(5, shapeDOM, nameShapeDpts, cheminReseau+"DptsEtendus");
-                }
             }
         };
         t.start();
